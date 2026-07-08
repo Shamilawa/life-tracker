@@ -1,0 +1,23 @@
+{
+  "skill_name": "untitled-ui",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have an existing Vite + React + TypeScript app (a simple expense tracker with a list of expenses and an add-expense form, currently styled with plain CSS). Restyle it professionally using the Untitled UI component library — set it up in the project and rebuild the two screens with it.",
+      "expected_output": "Tailwind v4 + theme foundation correctly installed (not just components), screens rebuilt with Button/Input/Badge/table patterns, semantic tokens used throughout, app compiles and renders styled",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Start a new React project for an internal admin dashboard for our support team: sidebar navigation (Tickets, Customers, Reports), a top bar with search, and a tickets page with summary stat cards and a table of open tickets with status badges. Use Untitled UI, I want it to look like a real SaaS product.",
+      "expected_output": "Starter scaffolded via CLI init, reusable AppShell + Page layout primitives, stat cards + table + BadgeWithDot statuses per the layout patterns, professional hierarchy",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "In my untitled-ui based project, add a 'create project' modal with a 2-step wizard: step 1 picks a project type from three option cards, step 2 has name/description/deadline fields. Wire the validation properly.",
+      "expected_output": "ModalOverlay>Modal>Dialog composition, FeaturedIcon option cards, Input with label/hint/isInvalid and string onChange, step indicator, correct React Aria prop conventions",
+      "files": []
+    }
+  ]
+}
