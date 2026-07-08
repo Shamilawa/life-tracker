@@ -70,8 +70,9 @@ export type GoalInput = {
 };
 
 export async function createGoal(input: GoalInput) {
-    await db.insert(goals).values(input);
+    const [goal] = await db.insert(goals).values(input).returning();
     refresh();
+    return goal;
 }
 
 export async function updateGoal(id: string, input: Partial<GoalInput> & { status?: "active" | "completed" | "paused" }) {
@@ -92,6 +93,11 @@ export async function addMilestone(goalId: string, title: string, dueDate: strin
 
 export async function toggleMilestone(id: string, done: boolean) {
     await db.update(milestones).set({ done }).where(eq(milestones.id, id));
+    refresh();
+}
+
+export async function updateMilestoneDueDate(id: string, dueDate: string | null) {
+    await db.update(milestones).set({ dueDate }).where(eq(milestones.id, id));
     refresh();
 }
 
@@ -140,8 +146,8 @@ export async function deleteRoutine(id: string) {
 
 // ---- Tasks ----
 
-export async function createTask(title: string, goalId: string | null, dueDate: string | null) {
-    await db.insert(tasks).values({ title, goalId, dueDate });
+export async function createTask(title: string, goalId: string | null, dueDate: string | null, milestoneId: string | null = null) {
+    await db.insert(tasks).values({ title, goalId, dueDate, milestoneId });
     refresh();
 }
 

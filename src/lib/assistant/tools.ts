@@ -10,7 +10,7 @@ import {
     toggleTask,
 } from "@/lib/actions";
 import { db } from "@/lib/db";
-import { goals, habits, tasks } from "@/lib/db/schema";
+import { goals, habits, milestones, tasks } from "@/lib/db/schema";
 import type { TimeOfDay } from "@/lib/db/schema";
 import { dateStr, daysLabel, todayStr } from "@/lib/dates";
 import { getGoalsWithProgress, getHabitsWithStats, getInsights, getRoutinesWithHabits, getTodayView } from "@/lib/queries";
@@ -94,6 +94,10 @@ const specs: ToolSpec[] = [
                 title: { type: "string", description: "The task description." },
                 due_date: { type: "string", description: "'today', 'tomorrow', or a YYYY-MM-DD date. Optional." },
                 goal_name: { type: "string", description: "Optional goal to link the task to, matched loosely." },
+                milestone_name: {
+                    type: "string",
+                    description: "Optional milestone to attach this task to as a sub-task, matched loosely against the target goal's milestones. Requires goal_name.",
+                },
             },
             required: ["title"],
         },
@@ -285,9 +289,15 @@ export async function executeTool(name: string, input: ToolInput): Promise<strin
                 const activeGoals = await db.select().from(goals).where(eq(goals.status, "active"));
                 goalId = findByName(goalName, activeGoals, (g) => g.title)?.id ?? null;
             }
+            let milestoneId: string | null = null;
+            const milestoneName = str(input.milestone_name);
+            if (milestoneName && goalId) {
+                const goalMilestones = await db.select().from(milestones).where(eq(milestones.goalId, goalId));
+                milestoneId = findByName(milestoneName, goalMilestones, (m) => m.title)?.id ?? null;
+            }
             const dueDate = resolveDate(str(input.due_date));
-            await createTask(title, goalId, dueDate);
-            return `Created task "${title}"${dueDate ? ` due ${dueDate}` : ""}.`;
+            await createTask(title, goalId, dueDate, milestoneId);
+            return `Created task "${title}"${dueDate ? ` due ${dueDate}` : ""}${milestoneId ? " as a sub-task" : ""}.`;
         }
         case "complete_task": {
             const taskName = str(input.task_name);

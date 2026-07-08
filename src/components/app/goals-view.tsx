@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil01, Plus, Target01, Trash01 } from "@untitledui/icons";
+import { ArrowRight, Pencil01, Plus, Target01 } from "@untitledui/icons";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GoalModal } from "@/components/app/goal-modal";
 import { Page } from "@/components/app/page";
-import { Badge, BadgeWithDot } from "@/components/base/badges/badges";
+import { BadgeWithDot } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
-import { Input } from "@/components/base/input/input";
 import { ProgressBarCircle } from "@/components/base/progress-indicators/progress-circles";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { addMilestone, deleteMilestone, toggleMilestone } from "@/lib/actions";
+import { toggleMilestone } from "@/lib/actions";
 import { formatHuman } from "@/lib/dates";
 import type { Goal } from "@/lib/db/schema";
 import type { GoalWithProgress } from "@/lib/queries";
@@ -23,59 +24,46 @@ const STATUS_BADGE: Record<Goal["status"], { color: "success" | "gray" | "brand"
     paused: { color: "gray", label: "Paused" },
 };
 
-function MilestoneList({ goal, milestones }: { goal: Goal; milestones: GoalWithProgress["milestones"] }) {
-    const [newTitle, setNewTitle] = useState("");
-    const [isPending, startTransition] = useTransition();
+const PREVIEW_COUNT = 2;
 
-    const add = () => {
-        const title = newTitle.trim();
-        if (!title) return;
-        startTransition(async () => {
-            await addMilestone(goal.id, title, null);
-            setNewTitle("");
-        });
-    };
+function MilestonePreview({ milestones }: { milestones: GoalWithProgress["milestones"] }) {
+    const [isPending, startTransition] = useTransition();
+    if (milestones.length === 0) return null;
+
+    const sorted = [...milestones].sort((a, b) => {
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        if (a.dueDate && b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return 0;
+    });
+    const shown = sorted.slice(0, PREVIEW_COUNT);
+    const remaining = milestones.length - shown.length;
 
     return (
         <div className={cx("mt-4", isPending && "opacity-60")}>
             <p className="text-xs font-semibold tracking-wide text-quaternary uppercase">Milestones</p>
             <ul className="mt-2 flex flex-col gap-2">
-                {milestones.map((m) => (
-                    <li key={m.id} className="group flex items-center gap-2.5">
-                        <Checkbox isSelected={m.done} onChange={(done) => startTransition(() => toggleMilestone(m.id, done))} aria-label={m.title} />
+                {shown.map((m) => (
+                    <li key={m.id} className="flex items-center gap-2.5">
+                        <Checkbox
+                            isSelected={m.done}
+                            onChange={(done) => startTransition(() => toggleMilestone(m.id, done))}
+                            aria-label={m.title}
+                        />
                         <span className={cx("min-w-0 flex-1 truncate text-sm text-primary", m.done && "text-tertiary line-through")}>{m.title}</span>
                         {m.dueDate && <span className="shrink-0 text-xs text-tertiary">{formatHuman(m.dueDate)}</span>}
-                        <span className="opacity-0 transition duration-100 group-hover:opacity-100">
-                            <ButtonUtility
-                                size="xs"
-                                color="tertiary"
-                                icon={Trash01}
-                                tooltip="Delete milestone"
-                                onClick={() => startTransition(() => deleteMilestone(m.id))}
-                            />
-                        </span>
                     </li>
                 ))}
             </ul>
-            <div className="mt-3 flex gap-2">
-                <Input
-                    size="sm"
-                    placeholder="Add a milestone"
-                    value={newTitle}
-                    onChange={setNewTitle}
-                    onKeyDown={(e) => e.key === "Enter" && add()}
-                    aria-label="New milestone"
-                />
-                <Button color="secondary" size="md" onClick={add} isDisabled={!newTitle.trim()}>
-                    Add
-                </Button>
-            </div>
+            {remaining > 0 && <p className="mt-2 text-xs text-tertiary">+{remaining} more</p>}
         </div>
     );
 }
 
 export function GoalsView({ goals }: { goals: GoalWithProgress[] }) {
     const [modal, setModal] = useState<{ open: boolean; goal: Goal | null }>({ open: false, goal: null });
+    const router = useRouter();
 
     return (
         <Page
@@ -99,11 +87,13 @@ export function GoalsView({ goals }: { goals: GoalWithProgress[] }) {
             ) : (
                 <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
                     {goals.map(({ goal, milestones, progress, habitConsistency30, linkedHabits, openTasks }) => (
-                        <div key={goal.id} className="rounded-xl bg-primary p-6 shadow-xs ring-1 ring-secondary">
+                        <div key={goal.id} className="flex flex-col rounded-xl bg-primary p-6 shadow-xs ring-1 ring-secondary">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2.5">
-                                        <h2 className="truncate text-md font-semibold text-primary">{goal.title}</h2>
+                                        <Link href={`/goals/${goal.id}`} className="truncate text-md font-semibold text-primary hover:underline">
+                                            {goal.title}
+                                        </Link>
                                         <BadgeWithDot type="pill-color" color={STATUS_BADGE[goal.status].color} size="sm">
                                             {STATUS_BADGE[goal.status].label}
                                         </BadgeWithDot>
@@ -136,13 +126,25 @@ export function GoalsView({ goals }: { goals: GoalWithProgress[] }) {
                                 </div>
                             </div>
 
-                            <MilestoneList goal={goal} milestones={milestones} />
+                            <MilestonePreview milestones={milestones} />
+
+                            <div className="mt-4 flex flex-1 items-end justify-end border-t border-secondary pt-3">
+                                <Button href={`/goals/${goal.id}`} color="link-color" size="sm" iconTrailing={ArrowRight}>
+                                    View goal
+                                </Button>
+                            </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {modal.open && <GoalModal goal={modal.goal} onClose={() => setModal({ open: false, goal: null })} />}
+            {modal.open && (
+                <GoalModal
+                    goal={modal.goal}
+                    onClose={() => setModal({ open: false, goal: null })}
+                    onCreated={(id) => router.push(`/goals/${id}`)}
+                />
+            )}
         </Page>
     );
 }

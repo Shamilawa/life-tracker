@@ -1,4 +1,4 @@
-import { format, subDays } from "date-fns";
+import { addDays, endOfYear, format, subDays } from "date-fns";
 
 /** Local calendar date as YYYY-MM-DD. All habit logs key off this. */
 export function todayStr(): string {
@@ -21,7 +21,17 @@ export function dayOfWeek(date: string): number {
 }
 
 export function formatHuman(date: string): string {
-    return format(new Date(`${date}T00:00:00`), "MMM d, yyyy");
+    const d = new Date(`${date}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? date : format(d, "MMM d, yyyy");
+}
+
+/** A local date `days` from today, as YYYY-MM-DD. Negative values go into the past. */
+export function relativeDateStr(days: number): string {
+    return dateStr(addDays(new Date(), days));
+}
+
+export function endOfYearStr(): string {
+    return dateStr(endOfYear(new Date()));
 }
 
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

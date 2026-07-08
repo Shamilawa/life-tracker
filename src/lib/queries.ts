@@ -273,28 +273,31 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
     });
 }
 
+export type MilestoneWithSubtasks = Milestone & { tasks: Task[] };
+
 export type GoalWithProgress = {
     goal: Goal;
-    milestones: Milestone[];
-    openTasks: Task[];
+    milestones: MilestoneWithSubtasks[];
+    openTasks: Task[]; // goal-level tasks only (not milestone sub-tasks)
     linkedHabits: Habit[];
     progress: number; // 0-100
     habitConsistency30: number | null; // 0-100 across linked habits, null if none
 };
 
-export async function getGoalsWithProgress(): Promise<GoalWithProgress[]> {
-    const allGoals = await db.query.goals.findMany({
-        with: {
-            milestones: { orderBy: [asc(milestones.sortOrder)] },
-            tasks: true,
-            habits: { where: eq(habits.archived, false) },
-        },
-        orderBy: [desc(goals.status), asc(goals.targetDate)],
-    });
+// A milestone's own progress: rolled up from its sub-tasks when it has any, else its own checkbox.
+function milestoneProgress(m: MilestoneWithSubtasks): number {
+    return m.tasks.length ? Math.round((m.tasks.filter((t) => t.done).length / m.tasks.length) * 100) : m.done ? 100 : 0;
+}
 
-    const last30 = lastNDates(30);
+function goalProgress(goal: Goal, ms: MilestoneWithSubtasks[], ts: Task[]): number {
+    if (goal.status === "completed") return 100;
+    if (ms.length > 0) return Math.round(ms.reduce((sum, m) => sum + milestoneProgress(m), 0) / ms.length);
+    if (ts.length > 0) return Math.round((ts.filter((t) => t.done).length / ts.length) * 100);
+    return 0;
+}
+
+async function habitDoneDates(habitIds: string[], last30: string[]) {
     const windowStart = last30[0];
-    const habitIds = allGoals.flatMap((g) => g.habits.map((h) => h.id));
     const logs = habitIds.length
         ? await db
               .select()
@@ -306,36 +309,84 @@ export async function getGoalsWithProgress(): Promise<GoalWithProgress[]> {
         if (!doneDates.has(log.habitId)) doneDates.set(log.habitId, new Set());
         doneDates.get(log.habitId)!.add(log.date);
     }
+    return doneDates;
+}
+
+function habitConsistency30For(hs: Habit[], doneDates: Map<string, Set<string>>, last30: string[]): number | null {
+    if (hs.length === 0) return null;
+    let due = 0;
+    let done = 0;
+    for (const h of hs) {
+        const dueDates = last30.filter((d) => h.daysOfWeek.includes(dayOfWeek(d)));
+        due += dueDates.length;
+        done += dueDates.filter((d) => doneDates.get(h.id)?.has(d)).length;
+    }
+    return due ? Math.round((done / due) * 100) : null;
+}
+
+export async function getGoalsWithProgress(): Promise<GoalWithProgress[]> {
+    const allGoals = await db.query.goals.findMany({
+        with: {
+            milestones: { orderBy: [asc(milestones.sortOrder)], with: { tasks: true } },
+            tasks: true,
+            habits: { where: eq(habits.archived, false) },
+        },
+        orderBy: [desc(goals.status), asc(goals.targetDate)],
+    });
+
+    const last30 = lastNDates(30);
+    const habitIds = allGoals.flatMap((g) => g.habits.map((h) => h.id));
+    const doneDates = await habitDoneDates(habitIds, last30);
 
     return allGoals.map((g) => {
         const { milestones: ms, tasks: ts, habits: hs, ...goal } = g;
 
-        let progress = 0;
-        if (goal.status === "completed") progress = 100;
-        else if (ms.length > 0) progress = Math.round((ms.filter((m) => m.done).length / ms.length) * 100);
-        else if (ts.length > 0) progress = Math.round((ts.filter((t) => t.done).length / ts.length) * 100);
-
-        let habitConsistency30: number | null = null;
-        if (hs.length > 0) {
-            let due = 0;
-            let done = 0;
-            for (const h of hs) {
-                const dueDates = last30.filter((d) => h.daysOfWeek.includes(dayOfWeek(d)));
-                due += dueDates.length;
-                done += dueDates.filter((d) => doneDates.get(h.id)?.has(d)).length;
-            }
-            habitConsistency30 = due ? Math.round((done / due) * 100) : null;
-        }
-
         return {
             goal,
             milestones: ms,
-            openTasks: ts.filter((t) => !t.done),
+            openTasks: ts.filter((t) => !t.done && !t.milestoneId),
             linkedHabits: hs,
-            progress,
-            habitConsistency30,
+            progress: goalProgress(goal, ms, ts),
+            habitConsistency30: habitConsistency30For(hs, doneDates, last30),
         };
     });
+}
+
+export type GoalDetail = {
+    goal: Goal;
+    milestones: MilestoneWithSubtasks[];
+    goalTasks: Task[]; // goal-level tasks only (not milestone sub-tasks)
+    linkedHabits: Habit[];
+    progress: number;
+    habitConsistency30: number | null;
+};
+
+export async function getGoalDetail(id: string): Promise<GoalDetail | null> {
+    const g = await db.query.goals.findFirst({
+        where: eq(goals.id, id),
+        with: {
+            milestones: { orderBy: [asc(milestones.sortOrder)], with: { tasks: { orderBy: [asc(tasks.createdAt)] } } },
+            tasks: true,
+            habits: { where: eq(habits.archived, false) },
+        },
+    });
+    if (!g) return null;
+
+    const { milestones: ms, tasks: ts, habits: hs, ...goal } = g;
+    const last30 = lastNDates(30);
+    const doneDates = await habitDoneDates(
+        hs.map((h) => h.id),
+        last30,
+    );
+
+    return {
+        goal,
+        milestones: ms,
+        goalTasks: ts.filter((t) => !t.milestoneId),
+        linkedHabits: hs,
+        progress: goalProgress(goal, ms, ts),
+        habitConsistency30: habitConsistency30For(hs, doneDates, last30),
+    };
 }
 
 export type RoutineWithHabits = Routine & { habits: Habit[] };

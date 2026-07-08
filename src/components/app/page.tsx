@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { ArrowLeft } from "@untitledui/icons";
+import Link from "next/link";
 
 /**
  * Shared page skeleton — every screen renders through this so titles,
@@ -9,16 +11,24 @@ export function Page({
     titleTrailing,
     description,
     actions,
+    back,
     children,
 }: {
     title: string;
     titleTrailing?: ReactNode;
     description?: string;
     actions?: ReactNode;
+    back?: { label: string; href: string };
     children: ReactNode;
 }) {
     return (
         <div className="mx-auto max-w-7xl px-8 py-6">
+            {back && (
+                <Link href={back.href} className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-tertiary hover:text-secondary">
+                    <ArrowLeft className="size-4" aria-hidden="true" />
+                    {back.label}
+                </Link>
+            )}
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2.5">
