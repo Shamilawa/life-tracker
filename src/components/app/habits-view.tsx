@@ -46,7 +46,7 @@ export function HabitsView({ habits, goalOptions }: { habits: HabitCardData[]; g
             ) : (
                 <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
                     {habits.map(({ habit, goalTitle, currentStreak, consistency30, strip }) => (
-                        <div key={habit.id} className="rounded-xl bg-primary p-5 shadow-xs ring-1 ring-secondary">
+                        <div key={habit.id} className="rounded-xl bg-primary p-5 shadow-xs ring-1 ring-secondary transition duration-100 hover:shadow-md">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="truncate text-sm font-semibold text-primary">{habit.title}</p>

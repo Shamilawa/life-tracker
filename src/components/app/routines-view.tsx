@@ -38,7 +38,7 @@ export function RoutinesView({ routines, habitOptions }: { routines: RoutineWith
             ) : (
                 <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
                     {routines.map((routine) => (
-                        <div key={routine.id} className="rounded-xl bg-primary p-6 shadow-xs ring-1 ring-secondary">
+                        <div key={routine.id} className="rounded-xl bg-primary p-6 shadow-xs ring-1 ring-secondary transition duration-100 hover:shadow-md">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2.5">

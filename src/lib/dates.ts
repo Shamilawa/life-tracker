@@ -25,6 +25,11 @@ export function formatHuman(date: string): string {
     return Number.isNaN(d.getTime()) ? date : format(d, "MMM d, yyyy");
 }
 
+/** True for a well-formed YYYY-MM-DD string with a plausible (4-digit) year. Guards against corrupt stored dates. */
+export function isValidDateStr(date: string | null | undefined): date is string {
+    return !!date && /^\d{4}-\d{2}-\d{2}$/.test(date);
+}
+
 /** A local date `days` from today, as YYYY-MM-DD. Negative values go into the past. */
 export function relativeDateStr(days: number): string {
     return dateStr(addDays(new Date(), days));

@@ -6,7 +6,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { deleteTask, toggleTask } from "@/lib/actions";
-import { formatHuman } from "@/lib/dates";
+import { formatHuman, isValidDateStr } from "@/lib/dates";
 import type { Task } from "@/lib/db/schema";
 import { cx } from "@/utils/cx";
 
@@ -22,7 +22,7 @@ export function TaskRow({ task, isOverdue = false, showDue = false }: { task: Ta
                     Overdue
                 </Badge>
             )}
-            {showDue && task.dueDate && !isOverdue && <span className="text-xs text-tertiary">{formatHuman(task.dueDate)}</span>}
+            {showDue && isValidDateStr(task.dueDate) && !isOverdue && <span className="text-xs text-tertiary">{formatHuman(task.dueDate)}</span>}
             <span className="opacity-0 transition duration-100 group-hover:opacity-100">
                 <ButtonUtility size="xs" color="tertiary" icon={Trash01} tooltip="Delete task" onClick={() => startTransition(() => deleteTask(task.id))} />
             </span>

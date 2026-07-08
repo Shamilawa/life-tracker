@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { ProgressBarCircle } from "@/components/base/progress-indicators/progress-circles";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { toggleMilestone } from "@/lib/actions";
-import { formatHuman } from "@/lib/dates";
+import { formatHuman, isValidDateStr } from "@/lib/dates";
 import type { Goal } from "@/lib/db/schema";
 import type { GoalWithProgress } from "@/lib/queries";
 import { cx } from "@/utils/cx";
@@ -52,7 +52,7 @@ function MilestonePreview({ milestones }: { milestones: GoalWithProgress["milest
                             aria-label={m.title}
                         />
                         <span className={cx("min-w-0 flex-1 truncate text-sm text-primary", m.done && "text-tertiary line-through")}>{m.title}</span>
-                        {m.dueDate && <span className="shrink-0 text-xs text-tertiary">{formatHuman(m.dueDate)}</span>}
+                        {isValidDateStr(m.dueDate) && <span className="shrink-0 text-xs text-tertiary">{formatHuman(m.dueDate)}</span>}
                     </li>
                 ))}
             </ul>
@@ -87,7 +87,7 @@ export function GoalsView({ goals }: { goals: GoalWithProgress[] }) {
             ) : (
                 <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
                     {goals.map(({ goal, milestones, progress, habitConsistency30, linkedHabits, openTasks }) => (
-                        <div key={goal.id} className="flex flex-col rounded-xl bg-primary p-6 shadow-xs ring-1 ring-secondary">
+                        <div key={goal.id} className="flex flex-col rounded-xl bg-primary p-6 shadow-xs ring-1 ring-secondary transition duration-100 hover:shadow-md">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2.5">
@@ -100,7 +100,7 @@ export function GoalsView({ goals }: { goals: GoalWithProgress[] }) {
                                     </div>
                                     {goal.why && <p className="mt-1 text-sm text-tertiary">{goal.why}</p>}
                                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-tertiary">
-                                        <span>{goal.targetDate ? `Target ${formatHuman(goal.targetDate)}` : "No target date"}</span>
+                                        <span>{isValidDateStr(goal.targetDate) ? `Target ${formatHuman(goal.targetDate)}` : "No target date"}</span>
                                         {linkedHabits.length > 0 && (
                                             <span>
                                                 {linkedHabits.length} habit{linkedHabits.length === 1 ? "" : "s"}
@@ -114,8 +114,8 @@ export function GoalsView({ goals }: { goals: GoalWithProgress[] }) {
                                         )}
                                     </div>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                    <ProgressBarCircle size="xs" value={progress} />
+                                <div className="flex shrink-0 items-center gap-3">
+                                    <ProgressBarCircle size="xxs" value={progress} />
                                     <ButtonUtility
                                         size="xs"
                                         color="tertiary"
