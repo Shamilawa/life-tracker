@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Pencil01, Plus, Zap } from "@untitledui/icons";
 import { HabitModal } from "@/components/app/habit-modal";
+import { LevelBadge } from "@/components/app/goal-gamification";
 import { Page } from "@/components/app/page";
 import { type DayCell, DayStrip } from "@/components/app/day-strip";
 import { TermButton } from "@/components/app/term-button";
 import { ProgressBarBase } from "@/components/base/progress-indicators/progress-indicators";
 import { daysLabel } from "@/lib/dates";
 import type { Habit } from "@/lib/db/schema";
+import type { GoalGamification } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
 export type HabitCardData = {
@@ -17,6 +19,7 @@ export type HabitCardData = {
     currentStreak: number;
     consistency30: number;
     strip: DayCell[]; // last 28 days
+    gamification: GoalGamification;
 };
 
 export function HabitsView({ habits, goalOptions }: { habits: HabitCardData[]; goalOptions: Array<{ id: string; title: string }> }) {
@@ -43,7 +46,7 @@ export function HabitsView({ habits, goalOptions }: { habits: HabitCardData[]; g
                 </div>
             ) : (
                 <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
-                    {habits.map(({ habit, goalTitle, currentStreak, consistency30, strip }) => (
+                    {habits.map(({ habit, goalTitle, currentStreak, consistency30, strip, gamification }) => (
                         <div key={habit.id} className="border border-secondary bg-secondary_subtle p-4 transition duration-100 hover:border-brand_alt">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
@@ -73,6 +76,10 @@ export function HabitsView({ habits, goalOptions }: { habits: HabitCardData[]; g
                                         onClick={() => setModal({ open: true, habit })}
                                     />
                                 </div>
+                            </div>
+
+                            <div className="mt-3 flex justify-end">
+                                <LevelBadge gamification={gamification} />
                             </div>
 
                             <div className="mt-4">

@@ -4,8 +4,10 @@ import { type ReactNode, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AssistantDrawer } from "@/components/app/assistant-drawer";
+import { LifeHud, VitalityMeter } from "@/components/app/life-progress";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import type { UiMessage } from "@/lib/assistant/history";
+import type { LifeProgress } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
 type NavEntry = { label: string; href: string; fkey: string; code: string; opensDrawer?: boolean };
@@ -147,19 +149,21 @@ function NavMenu({
     );
 }
 
-function SidebarStatus() {
+function SidebarStatus({ life }: { life: LifeProgress }) {
     return (
         <div className="border-t border-secondary px-3 py-3">
             <div className="border border-secondary bg-secondary_subtle p-2.5 text-[11px] leading-relaxed">
                 <p className="flex items-center justify-between text-quaternary uppercase">
-                    <span>SYSTEM</span>
-                    <span className="flex items-center gap-1.5 text-success-primary">
-                        <span className="inline-block size-1.5 animate-pulse bg-fg-success-primary" />
-                        NOMINAL
+                    <span>LIFE</span>
+                    <span className="tracking-widest text-brand-secondary">
+                        LVL {life.level} · {life.rank}
                     </span>
                 </p>
-                <p className="mt-1.5 text-tertiary">
-                    <span className="text-quaternary">$</span> track today, then query the <span className="text-brand-secondary">AI</span> module.
+                <div className="mt-2">
+                    <VitalityMeter vitality={life.vitality} label={life.vitalityLabel} width={12} />
+                </div>
+                <p className="mt-1.5 text-tertiary tabular-nums">
+                    <span className="text-quaternary">$</span> {life.xp.toLocaleString()} XP all-time
                 </p>
             </div>
             <p className="mt-2 px-1 text-[10px] tracking-widest text-quaternary uppercase">single-user · local-first</p>
@@ -171,10 +175,12 @@ export function AppShell({
     children,
     assistantInitialMessages,
     assistantHasApiKey,
+    lifeProgress,
 }: {
     children: ReactNode;
     assistantInitialMessages: UiMessage[];
     assistantHasApiKey: boolean;
+    lifeProgress: LifeProgress;
 }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -207,6 +213,9 @@ export function AppShell({
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
+                    <span className="border border-secondary px-2 py-1 max-md:hidden">
+                        <LifeHud life={lifeProgress} />
+                    </span>
                     <span className="text-xs max-sm:hidden">
                         <Clock />
                     </span>
@@ -222,7 +231,7 @@ export function AppShell({
                 {/* ── Desktop sidebar ─────────────────────────────────────── */}
                 <aside className="flex w-64 shrink-0 flex-col border-r border-primary bg-secondary max-lg:hidden">
                     <NavMenu pathname={pathname} assistantOpen={assistantOpen} onOpenAssistant={() => setAssistantOpen(true)} />
-                    <SidebarStatus />
+                    <SidebarStatus life={lifeProgress} />
                 </aside>
 
                 {/* ── Mobile drawer ───────────────────────────────────────── */}
@@ -252,7 +261,7 @@ export function AppShell({
                                 assistantOpen={assistantOpen}
                                 onOpenAssistant={() => setAssistantOpen(true)}
                             />
-                            <SidebarStatus />
+                            <SidebarStatus life={lifeProgress} />
                         </aside>
                     </div>
                 )}

@@ -1,4 +1,5 @@
 import { ConsistencyHeatmap } from "@/components/app/consistency-heatmap";
+import { LifeHero } from "@/components/app/life-progress";
 import { Page } from "@/components/app/page";
 import { getInsights } from "@/lib/queries";
 import { cx } from "@/utils/cx";
@@ -20,6 +21,10 @@ export default async function InsightsPage() {
 
     return (
         <Page title="Insights" description="Is the system working? The numbers do not negotiate.">
+            <div className="mb-4">
+                <LifeHero life={insights.life} />
+            </div>
+
             <div className="grid grid-cols-4 gap-4 max-lg:grid-cols-2">
                 <StatCard label="This week" value={`${insights.completion7}%`} sub="Habit completion, last 7 days" />
                 <StatCard label="This month" value={`${insights.completion30}%`} sub="Habit completion, last 30 days" />

@@ -195,7 +195,30 @@ export type HabitStats = {
     currentStreak: number;
     consistency30: number; // 0-100, done / due over last 30 days
     heatmap: Array<{ date: string; due: boolean; status: "done" | "skipped" | null }>;
+    gamification: GoalGamification; // this habit's own XP/level (all-time done logs + streak bonus)
 };
+
+// Longest run (ever) of consecutive due-and-done days. Skipped days are transparent
+// (mirroring computeStreak); a due day with no "done" log resets the run. Longest-ever
+// never decreases, so the XP bonus it feeds can never be revoked.
+function longestStreak(habit: Habit, logsByDate: Map<string, HabitLog>, dates: string[]): number {
+    const today = dates[dates.length - 1];
+    let best = 0;
+    let run = 0;
+    for (const date of dates) {
+        if (!habit.daysOfWeek.includes(dayOfWeek(date))) continue;
+        const log = logsByDate.get(date);
+        if (log?.status === "done") {
+            run++;
+            if (run > best) best = run;
+        } else if (log?.status === "skipped" || date === today) {
+            // neutral: skipped days and the in-progress today neither extend nor break the run
+        } else {
+            run = 0;
+        }
+    }
+    return best;
+}
 
 function computeStreak(habit: Habit, logsByDate: Map<string, HabitLog>, dates: string[]): number {
     // Walk backwards from today. Non-due days and skipped days don't break the
@@ -251,6 +274,8 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
         byHabit.get(log.habitId)!.set(log.date, log);
     }
 
+    const allTimeDone = await habitDoneCountsAllTime(allHabits.map((h) => h.id));
+
     const last30 = dates.slice(-30);
     return allHabits.map((h) => {
         const { goal, ...habit } = h;
@@ -258,6 +283,9 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
 
         const due30 = last30.filter((d) => habit.daysOfWeek.includes(dayOfWeek(d)));
         const done30 = due30.filter((d) => logsByDate.get(d)?.status === "done").length;
+
+        const streakTiers = Math.floor(longestStreak(habit, logsByDate, dates) / STREAK_TIER_DAYS);
+        const habitXp = (allTimeDone.get(habit.id) ?? 0) * XP_PER_HABIT_LOG + streakTiers * XP_PER_STREAK_TIER;
 
         return {
             habit,
@@ -269,6 +297,7 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
                 due: habit.daysOfWeek.includes(dayOfWeek(date)),
                 status: logsByDate.get(date)?.status ?? null,
             })),
+            gamification: { xp: habitXp, ...computeLevel(habitXp) },
         };
     });
 }
@@ -291,6 +320,13 @@ const XP_PER_MILESTONE = 150;
 const XP_PER_TASK = 40;
 const XP_PER_HABIT_LOG = 5;
 
+// Global "life" XP only — tasks are intentionally excluded from the life score.
+const XP_PER_GOAL_COMPLETE = 500; // bonus when a whole goal is completed
+const STREAK_TIER_DAYS = 7; // every 7 days of best-ever streak =
+const XP_PER_STREAK_TIER = 50; //   a permanent streak bonus
+const VITALITY_WINDOW = 14; // rolling days the penalty looks at
+const VITALITY_PENALTY_WEIGHT = 1.5; // how hard the recent miss-RATE drags vitality down
+
 function rankForLevel(level: number): string {
     if (level >= 15) return "LEGEND";
     if (level >= 10) return "VETERAN";
@@ -300,10 +336,15 @@ function rankForLevel(level: number): string {
     return "ROOKIE";
 }
 
+// Shared level math: turn a raw XP total into level/rank + progress into the current level.
+function computeLevel(xp: number): { level: number; xpIntoLevel: number; xpPerLevel: number; rank: string } {
+    const level = Math.floor(xp / XP_PER_LEVEL) + 1;
+    return { level, xpIntoLevel: xp % XP_PER_LEVEL, xpPerLevel: XP_PER_LEVEL, rank: rankForLevel(level) };
+}
+
 function computeGamification(milestonesDone: number, tasksDone: number, habitLogsDone: number): GoalGamification {
     const xp = milestonesDone * XP_PER_MILESTONE + tasksDone * XP_PER_TASK + habitLogsDone * XP_PER_HABIT_LOG;
-    const level = Math.floor(xp / XP_PER_LEVEL) + 1;
-    return { xp, level, xpIntoLevel: xp % XP_PER_LEVEL, xpPerLevel: XP_PER_LEVEL, rank: rankForLevel(level) };
+    return { xp, ...computeLevel(xp) };
 }
 
 // All-time count of "done" logs per habit (unlike habitDoneDates, which is windowed to 30 days) — XP rewards sustained history, not just recent consistency.
@@ -458,6 +499,98 @@ export async function getRoutinesWithHabits(): Promise<RoutineWithHabits[]> {
     }));
 }
 
+// Global "life" gamification: an all-time XP total that only grows (Level/Rank), paired
+// with a recoverable Vitality bar that recent missed habits drain and consistency refills.
+export type LifeProgress = {
+    xp: number;
+    level: number;
+    xpIntoLevel: number;
+    xpPerLevel: number;
+    rank: string;
+    vitality: number; // 0-100
+    vitalityLabel: string; // THRIVING | STEADY | STRAINED | DEPLETED | CRITICAL
+    recentMisses: number; // missed due-habit-days in the last VITALITY_WINDOW days
+    breakdown: { habits: number; milestones: number; goals: number; streaks: number };
+};
+
+function vitalityLabelFor(v: number): string {
+    if (v >= 80) return "THRIVING";
+    if (v >= 60) return "STEADY";
+    if (v >= 40) return "STRAINED";
+    if (v >= 20) return "DEPLETED";
+    return "CRITICAL";
+}
+
+export async function getLifeProgress(): Promise<LifeProgress> {
+    // ── Habits: every all-time "done" log + a permanent best-ever-streak bonus. One full
+    // log scan (cheap for a single local user) feeds XP, the streak bonus, and vitality.
+    const allHabits = await db.query.habits.findMany({ where: eq(habits.archived, false) });
+    const habitIds = allHabits.map((h) => h.id);
+    const logs = habitIds.length ? await db.select().from(habitLogs).where(inArray(habitLogs.habitId, habitIds)) : [];
+
+    const byHabit = new Map<string, Map<string, HabitLog>>();
+    let doneLogs = 0;
+    for (const log of logs) {
+        if (!byHabit.has(log.habitId)) byHabit.set(log.habitId, new Map());
+        byHabit.get(log.habitId)!.set(log.date, log);
+        if (log.status === "done") doneLogs++;
+    }
+
+    const allDates = lastNDates(365); // ordered axis for the longest-streak scan
+    let streakTiers = 0;
+    for (const h of allHabits) {
+        streakTiers += Math.floor(longestStreak(h, byHabit.get(h.id) ?? new Map(), allDates) / STREAK_TIER_DAYS);
+    }
+
+    // ── Vitality: over the window, a due-habit-day with no done/skipped log is a miss
+    // (skipped is grace, not a miss). Drive vitality off the miss RATE, not the raw count,
+    // so it stays meaningful whether you track 2 habits or 20, and recovers with consistency.
+    const windowDates = lastNDates(VITALITY_WINDOW);
+    const today = windowDates[windowDates.length - 1];
+    let recentDue = 0;
+    let recentMisses = 0;
+    for (const h of allHabits) {
+        const hLogs = byHabit.get(h.id);
+        for (const d of windowDates) {
+            if (d === today) continue; // today is still in progress
+            if (!h.daysOfWeek.includes(dayOfWeek(d))) continue;
+            recentDue++;
+            if (!hLogs?.has(d)) recentMisses++;
+        }
+    }
+    const missRate = recentDue ? recentMisses / recentDue : 0;
+    const vitality = Math.max(0, Math.min(100, Math.round(100 - missRate * 100 * VITALITY_PENALTY_WEIGHT)));
+
+    // ── Milestones (subtask rollup) + completed-goal bonuses.
+    const allGoals = await db.query.goals.findMany({ with: { milestones: { with: { tasks: true } } } });
+    let milestonesDone = 0;
+    let goalsCompleted = 0;
+    for (const g of allGoals) {
+        if (g.status === "completed") goalsCompleted++;
+        for (const m of g.milestones) {
+            const done = m.tasks.length > 0 ? m.tasks.every((t) => t.done) : m.done;
+            if (done) milestonesDone++;
+        }
+    }
+
+    const breakdown = {
+        habits: doneLogs * XP_PER_HABIT_LOG,
+        milestones: milestonesDone * XP_PER_MILESTONE,
+        goals: goalsCompleted * XP_PER_GOAL_COMPLETE,
+        streaks: streakTiers * XP_PER_STREAK_TIER,
+    };
+    const xp = breakdown.habits + breakdown.milestones + breakdown.goals + breakdown.streaks;
+
+    return {
+        xp,
+        ...computeLevel(xp),
+        vitality,
+        vitalityLabel: vitalityLabelFor(vitality),
+        recentMisses,
+        breakdown,
+    };
+}
+
 export type Insights = {
     completion7: number;
     completion30: number;
@@ -465,11 +598,13 @@ export type Insights = {
     activeGoals: number;
     weeklyTrend: Array<{ date: string; due: number; done: number }>; // last 14 days
     heatmap: Array<{ date: string; due: number; done: number }>; // last 84 days
+    life: LifeProgress;
 };
 
 export async function getInsights(): Promise<Insights> {
     const stats = await getHabitsWithStats();
     const activeGoals = (await db.select().from(goals).where(eq(goals.status, "active"))).length;
+    const life = await getLifeProgress();
 
     const dates84 = lastNDates(84);
     const perDay = new Map(dates84.map((d) => [d, { date: d, due: 0, done: 0 }]));
@@ -498,6 +633,7 @@ export async function getInsights(): Promise<Insights> {
         activeGoals,
         weeklyTrend: heatmap.slice(-14),
         heatmap,
+        life,
     };
 }
 

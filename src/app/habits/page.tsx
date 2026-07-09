@@ -12,6 +12,7 @@ export default async function HabitsPage() {
         currentStreak: s.currentStreak,
         consistency30: s.consistency30,
         strip: s.heatmap.slice(-28),
+        gamification: s.gamification,
     }));
 
     return <HabitsView habits={habits} goalOptions={goalOptions} />;

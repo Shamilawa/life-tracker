@@ -7,7 +7,7 @@ import { cx } from "@/utils/cx";
  * more XP), the level-relative fraction is replaced with a full bar — a
  * partial-looking bar on a finished goal reads as broken, not "in progress".
  */
-function XpMeter({ xpIntoLevel, xpPerLevel, maxed, width = 10 }: { xpIntoLevel: number; xpPerLevel: number; maxed?: boolean; width?: number }) {
+export function XpMeter({ xpIntoLevel, xpPerLevel, maxed, width = 10 }: { xpIntoLevel: number; xpPerLevel: number; maxed?: boolean; width?: number }) {
     const filled = maxed ? width : Math.round((xpIntoLevel / xpPerLevel) * width);
     return (
         <span className="flex items-center gap-1.5 text-[11px] tabular-nums">
