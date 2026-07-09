@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CheckCircle, RefreshCcw01, Send01, Stars01 } from "@untitledui/icons";
+import { CheckCircle, RefreshCcw01, Send01, Stars01, XClose } from "@untitledui/icons";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/base/badges/badges";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { clearChatHistory } from "@/lib/actions";
@@ -31,12 +32,22 @@ const SUGGESTIONS = [
     "Which habits am I slipping on?",
 ];
 
-export function AssistantChat({ initialMessages, hasApiKey }: { initialMessages: UiMessage[]; hasApiKey: boolean }) {
+export function AssistantChat({
+    initialMessages,
+    hasApiKey,
+    onClose,
+}: {
+    initialMessages: UiMessage[];
+    hasApiKey: boolean;
+    /** Present when rendered inside the global slide-over (as opposed to the dedicated /assistant page) — shows a close button and tightens spacing. */
+    onClose?: () => void;
+}) {
     const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
     const [input, setInput] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
     const [missingKey, setMissingKey] = useState(!hasApiKey);
     const [isClearing, startClear] = useTransition();
+    const router = useRouter();
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +89,7 @@ export function AssistantChat({ initialMessages, hasApiKey }: { initialMessages:
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
+            let usedTool = false;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -89,10 +101,16 @@ export function AssistantChat({ initialMessages, hasApiKey }: { initialMessages:
                     if (!line.trim()) continue;
                     const event = JSON.parse(line) as { type: string; text?: string; name?: string; message?: string };
                     if (event.type === "text") update((m) => ({ ...m, text: m.text + (event.text ?? "") }));
-                    else if (event.type === "tool") update((m) => ({ ...m, tools: [...m.tools, event.name!] }));
-                    else if (event.type === "error") update((m) => ({ ...m, text: m.text || `Error: ${event.message}` }));
+                    else if (event.type === "tool") {
+                        usedTool = true;
+                        update((m) => ({ ...m, tools: [...m.tools, event.name!] }));
+                    } else if (event.type === "error") update((m) => ({ ...m, text: m.text || `Error: ${event.message}` }));
                 }
             }
+
+            // A write tool (create_goal, log_habit, …) may have changed data another
+            // page is currently showing behind this chat — pull it fresh.
+            if (usedTool) router.refresh();
         } catch {
             update((m) => ({ ...m, text: m.text || "Sorry — the connection dropped. Please try again." }));
         } finally {
@@ -108,22 +126,34 @@ export function AssistantChat({ initialMessages, hasApiKey }: { initialMessages:
         });
     }
 
+    const compact = Boolean(onClose);
+
     return (
         <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center justify-between border-b border-secondary bg-primary px-8 py-4">
+            <div className={cx("flex shrink-0 items-center justify-between border-b border-secondary bg-primary", compact ? "px-4 py-3" : "px-8 py-4")}>
                 <div className="flex items-center gap-2.5">
                     <h1 className="text-lg font-semibold text-primary">Assistant</h1>
                     <Badge type="pill-color" color="brand" size="sm">
                         Phase 2
                     </Badge>
                 </div>
-                {messages.length > 0 && (
-                    <ButtonUtility size="sm" color="tertiary" icon={RefreshCcw01} tooltip="Clear conversation" isDisabled={isClearing} onClick={clearAll} />
-                )}
+                <div className="flex items-center gap-1">
+                    {messages.length > 0 && (
+                        <ButtonUtility
+                            size="sm"
+                            color="tertiary"
+                            icon={RefreshCcw01}
+                            tooltip="Clear conversation"
+                            isDisabled={isClearing}
+                            onClick={clearAll}
+                        />
+                    )}
+                    {onClose && <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Close" onClick={onClose} />}
+                </div>
             </div>
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-3xl px-6 py-6">
+                <div className={cx("mx-auto", compact ? "px-4 py-4" : "max-w-3xl px-6 py-6")}>
                     {messages.length === 0 ? (
                         <div className="flex flex-col items-center pt-12 text-center">
                             <span className="flex size-12 items-center justify-center rounded-full bg-brand-solid text-white">
@@ -133,7 +163,7 @@ export function AssistantChat({ initialMessages, hasApiKey }: { initialMessages:
                             <p className="mt-1 max-w-md text-sm text-tertiary">
                                 I can read your habits, goals, and routines — and log what you&apos;ve done. Try one of these:
                             </p>
-                            <div className="mt-6 grid w-full max-w-lg grid-cols-2 gap-3 max-sm:grid-cols-1">
+                            <div className={cx("mt-6 grid w-full max-w-lg gap-3", compact ? "grid-cols-1" : "grid-cols-2 max-sm:grid-cols-1")}>
                                 {SUGGESTIONS.map((s) => (
                                     <button
                                         key={s}
@@ -163,8 +193,8 @@ export function AssistantChat({ initialMessages, hasApiKey }: { initialMessages:
                 </div>
             </div>
 
-            <div className="shrink-0 border-t border-secondary bg-primary px-6 py-4">
-                <div className="mx-auto flex max-w-3xl items-end gap-3">
+            <div className={cx("shrink-0 border-t border-secondary bg-primary", compact ? "px-4 py-3" : "px-6 py-4")}>
+                <div className={cx("mx-auto flex items-end gap-3", !compact && "max-w-3xl")}>
                     <textarea
                         ref={textareaRef}
                         value={input}

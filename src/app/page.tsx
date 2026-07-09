@@ -1,9 +1,7 @@
-import { ChevronLeft, ChevronRight } from "@untitledui/icons";
 import { addDays, format, subDays } from "date-fns";
 import Link from "next/link";
 import { JournalEditor } from "@/components/app/journal-editor";
 import { RoutineSummary } from "@/components/app/routine-summary";
-import { Badge } from "@/components/base/badges/badges";
 import { dateStr, todayStr } from "@/lib/dates";
 import { getDayView } from "@/lib/queries";
 import { cx } from "@/utils/cx";
@@ -21,34 +19,38 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     const next = dateStr(addDays(parsed, 1));
     const hrefFor = (d: string) => (d === today ? "/" : `/?date=${d}`);
 
-    const pctColor = view.pct === 100 ? "success" : view.pct > 0 ? "brand" : "gray";
+    const pctColor = view.pct === 100 ? "text-success-primary" : view.pct > 0 ? "text-brand-secondary" : "text-quaternary";
+    // ASCII progress meter, e.g. [■■■■□□□□□□]
+    const filled = Math.round(view.pct / 10);
+    const meter = "■".repeat(filled) + "□".repeat(10 - filled);
 
     return (
         <div className="flex h-full flex-col bg-primary">
-            <header className="flex h-16 shrink-0 items-center justify-between border-b border-secondary px-6">
-                <div className="flex items-center gap-3">
-                    <span className="h-6 w-1 rounded-full bg-brand-solid" />
-                    <h1 className="text-xl font-semibold text-primary">{format(parsed, "EEEE, MMMM d")}</h1>
-                    <Badge type="pill-color" color={pctColor} size="sm">
-                        {view.pct}% DONE
-                    </Badge>
+            <header className="flex h-14 shrink-0 items-center justify-between border-b border-primary px-4 sm:px-6">
+                <div className="flex min-w-0 items-center gap-3">
+                    <span className="text-brand-secondary">&gt;</span>
+                    <h1 className="truncate text-sm font-bold tracking-widest text-primary uppercase term-glow">{format(parsed, "EEE dd.MMM.yyyy")}</h1>
+                    <span className={cx("hidden items-center gap-2 border border-secondary px-2 py-1 text-[11px] tracking-wider tabular-nums sm:flex", pctColor)}>
+                        <span>{meter}</span>
+                        <span>{String(view.pct).padStart(3, " ")}%</span>
+                    </span>
                 </div>
 
-                <nav className="flex items-center gap-1">
-                    <Link href={hrefFor(prev)} aria-label="Previous day" className="flex size-9 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary">
-                        <ChevronLeft className="size-5" />
+                <nav className="flex items-center gap-1 text-xs tracking-widest uppercase">
+                    <Link href={hrefFor(prev)} aria-label="Previous day" className="border border-secondary px-2 py-1.5 text-fg-quaternary transition duration-100 hover:border-brand hover:text-brand-secondary">
+                        ◂ PREV
                     </Link>
                     <Link
                         href="/"
                         className={cx(
-                            "rounded-lg px-3 py-1.5 text-sm font-semibold tracking-wide uppercase transition duration-100 hover:bg-primary_hover",
-                            view.isToday ? "text-brand-secondary" : "text-tertiary",
+                            "border px-3 py-1.5 font-semibold transition duration-100",
+                            view.isToday ? "border-brand bg-brand-solid text-primary_on-brand" : "border-secondary text-tertiary hover:border-brand hover:text-brand-secondary",
                         )}
                     >
-                        Today
+                        TODAY
                     </Link>
-                    <Link href={hrefFor(next)} aria-label="Next day" className="flex size-9 items-center justify-center rounded-lg text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary">
-                        <ChevronRight className="size-5" />
+                    <Link href={hrefFor(next)} aria-label="Next day" className="border border-secondary px-2 py-1.5 text-fg-quaternary transition duration-100 hover:border-brand hover:text-brand-secondary">
+                        NEXT ▸
                     </Link>
                 </nav>
             </header>

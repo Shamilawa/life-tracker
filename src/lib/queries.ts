@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
     type Goal,
@@ -275,6 +275,48 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
 
 export type MilestoneWithSubtasks = Milestone & { tasks: Task[] };
 
+// A goal's progress re-expressed as an arcade-style level so momentum (not
+// just completeness) shows up: XP keeps accruing from habit check-ins even
+// after every milestone is done.
+export type GoalGamification = {
+    xp: number;
+    level: number;
+    xpIntoLevel: number;
+    xpPerLevel: number;
+    rank: string;
+};
+
+const XP_PER_LEVEL = 500;
+const XP_PER_MILESTONE = 150;
+const XP_PER_TASK = 40;
+const XP_PER_HABIT_LOG = 5;
+
+function rankForLevel(level: number): string {
+    if (level >= 15) return "LEGEND";
+    if (level >= 10) return "VETERAN";
+    if (level >= 7) return "ELITE";
+    if (level >= 5) return "SPECIALIST";
+    if (level >= 3) return "OPERATOR";
+    return "ROOKIE";
+}
+
+function computeGamification(milestonesDone: number, tasksDone: number, habitLogsDone: number): GoalGamification {
+    const xp = milestonesDone * XP_PER_MILESTONE + tasksDone * XP_PER_TASK + habitLogsDone * XP_PER_HABIT_LOG;
+    const level = Math.floor(xp / XP_PER_LEVEL) + 1;
+    return { xp, level, xpIntoLevel: xp % XP_PER_LEVEL, xpPerLevel: XP_PER_LEVEL, rank: rankForLevel(level) };
+}
+
+// All-time count of "done" logs per habit (unlike habitDoneDates, which is windowed to 30 days) — XP rewards sustained history, not just recent consistency.
+async function habitDoneCountsAllTime(habitIds: string[]): Promise<Map<string, number>> {
+    if (habitIds.length === 0) return new Map();
+    const rows = await db
+        .select({ habitId: habitLogs.habitId, count: sql<number>`count(*)` })
+        .from(habitLogs)
+        .where(and(inArray(habitLogs.habitId, habitIds), eq(habitLogs.status, "done")))
+        .groupBy(habitLogs.habitId);
+    return new Map(rows.map((r) => [r.habitId, r.count]));
+}
+
 export type GoalWithProgress = {
     goal: Goal;
     milestones: MilestoneWithSubtasks[];
@@ -282,6 +324,7 @@ export type GoalWithProgress = {
     linkedHabits: Habit[];
     progress: number; // 0-100
     habitConsistency30: number | null; // 0-100 across linked habits, null if none
+    gamification: GoalGamification;
 };
 
 // A milestone's own progress: rolled up from its sub-tasks when it has any, else its own checkbox.
@@ -337,9 +380,13 @@ export async function getGoalsWithProgress(): Promise<GoalWithProgress[]> {
     const last30 = lastNDates(30);
     const habitIds = allGoals.flatMap((g) => g.habits.map((h) => h.id));
     const doneDates = await habitDoneDates(habitIds, last30);
+    const habitLogCounts = await habitDoneCountsAllTime(habitIds);
 
     return allGoals.map((g) => {
         const { milestones: ms, tasks: ts, habits: hs, ...goal } = g;
+        const milestonesDone = ms.filter((m) => (m.tasks.length > 0 ? m.tasks.every((t) => t.done) : m.done)).length;
+        const tasksDone = ts.filter((t) => t.done).length;
+        const habitLogsDone = hs.reduce((sum, h) => sum + (habitLogCounts.get(h.id) ?? 0), 0);
 
         return {
             goal,
@@ -348,6 +395,7 @@ export async function getGoalsWithProgress(): Promise<GoalWithProgress[]> {
             linkedHabits: hs,
             progress: goalProgress(goal, ms, ts),
             habitConsistency30: habitConsistency30For(hs, doneDates, last30),
+            gamification: computeGamification(milestonesDone, tasksDone, habitLogsDone),
         };
     });
 }
@@ -359,6 +407,7 @@ export type GoalDetail = {
     linkedHabits: Habit[];
     progress: number;
     habitConsistency30: number | null;
+    gamification: GoalGamification;
 };
 
 export async function getGoalDetail(id: string): Promise<GoalDetail | null> {
@@ -374,10 +423,13 @@ export async function getGoalDetail(id: string): Promise<GoalDetail | null> {
 
     const { milestones: ms, tasks: ts, habits: hs, ...goal } = g;
     const last30 = lastNDates(30);
-    const doneDates = await habitDoneDates(
-        hs.map((h) => h.id),
-        last30,
-    );
+    const habitIds = hs.map((h) => h.id);
+    const doneDates = await habitDoneDates(habitIds, last30);
+    const habitLogCounts = await habitDoneCountsAllTime(habitIds);
+
+    const milestonesDone = ms.filter((m) => (m.tasks.length > 0 ? m.tasks.every((t) => t.done) : m.done)).length;
+    const tasksDone = ts.filter((t) => t.done).length;
+    const habitLogsDone = hs.reduce((sum, h) => sum + (habitLogCounts.get(h.id) ?? 0), 0);
 
     return {
         goal,
@@ -386,6 +438,7 @@ export async function getGoalDetail(id: string): Promise<GoalDetail | null> {
         linkedHabits: hs,
         progress: goalProgress(goal, ms, ts),
         habitConsistency30: habitConsistency30For(hs, doneDates, last30),
+        gamification: computeGamification(milestonesDone, tasksDone, habitLogsDone),
     };
 }
 

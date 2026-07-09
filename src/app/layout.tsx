@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AppShell } from "@/components/app/app-shell";
+import { loadUiMessages } from "@/lib/assistant/history";
 import { RouteProvider } from "@/providers/router-provider";
 import { Theme } from "@/providers/theme";
 import "@/styles/globals.css";
@@ -22,17 +23,22 @@ export const viewport: Viewport = {
     colorScheme: "light dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const assistantInitialMessages = await loadUiMessages();
+    const assistantHasApiKey = Boolean(process.env.OPENAI_API_KEY);
+
     return (
         <html lang="en" suppressHydrationWarning>
             <body className={cx(inter.variable, "bg-primary antialiased")}>
                 <RouteProvider>
                     <Theme>
-                        <AppShell>{children}</AppShell>
+                        <AppShell assistantInitialMessages={assistantInitialMessages} assistantHasApiKey={assistantHasApiKey}>
+                            {children}
+                        </AppShell>
                     </Theme>
                 </RouteProvider>
             </body>

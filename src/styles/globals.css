@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./theme.css";
 @import "./typography.css";
+@import "./terminal.css";
 
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-react-aria-components";
@@ -64,10 +65,10 @@ input[type="search"]::-webkit-search-cancel-button {
 /* Native date inputs render browser chrome (calendar icon, picker popover) using
    color-scheme, not our CSS variables — without this the icon and popover stay
    light/black regardless of theme and look broken on a dark background. */
+/* All terminal phosphor variants share a black background, so native date
+   chrome should always render in dark color-scheme regardless of which
+   phosphor-* class is active. */
 input[type="date"] {
-    color-scheme: light;
-}
-.dark-mode input[type="date"] {
     color-scheme: dark;
 }
 

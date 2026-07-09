@@ -55,10 +55,10 @@ export function RoutineSummary({
     const flatHabits = categories.flatMap((c) => c.habits).sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
 
     return (
-        <div className="flex h-full flex-col overflow-y-auto border-r border-secondary bg-primary">
-            <div className="flex items-center justify-between px-5 py-4">
-                <p className="text-xs font-semibold tracking-wide text-quaternary uppercase">Routine summary</p>
-                <div className="flex rounded-lg bg-secondary p-0.5">
+        <div className="flex h-full flex-col overflow-y-auto border-r border-primary bg-primary">
+            <div className="flex items-center justify-between border-b border-secondary px-4 py-2.5">
+                <p className="text-xs tracking-widest text-brand-secondary uppercase">// ROUTINE</p>
+                <div className="flex border border-secondary">
                     <ToggleBtn active={view === "list"} onClick={() => setView("list")}>
                         List
                     </ToggleBtn>
@@ -70,15 +70,17 @@ export function RoutineSummary({
 
             {isEmpty ? (
                 <div className="px-5 py-10 text-center">
-                    <p className="text-sm text-tertiary">Nothing scheduled for this day.</p>
+                    <p className="text-sm text-tertiary">&gt; nothing scheduled for this day.</p>
                 </div>
             ) : (
-                <div className="flex flex-col gap-5 px-4 pb-6">
+                <div className="flex flex-col gap-5 px-3 py-4">
                     {view === "group" ? (
                         <>
                             {categories.map((group) => (
                                 <div key={group.category}>
-                                    <p className="px-1 pb-2 text-xs font-semibold tracking-wide text-quaternary uppercase">{group.category}</p>
+                                    <p className="px-1 pb-2 text-[11px] tracking-widest text-quaternary uppercase">
+                                        <span className="text-brand-secondary/60">──</span> {group.category}
+                                    </p>
                                     <div className="flex flex-col gap-2">
                                         {group.habits.map((habit) => (
                                             <HabitRow key={habit.id} habit={habit} date={date} interactive={interactive} />
@@ -88,7 +90,9 @@ export function RoutineSummary({
                             ))}
                             {tasks.length > 0 && (
                                 <div>
-                                    <p className="px-1 pb-2 text-xs font-semibold tracking-wide text-quaternary uppercase">Tasks</p>
+                                    <p className="px-1 pb-2 text-[11px] tracking-widest text-quaternary uppercase">
+                                        <span className="text-brand-secondary/60">──</span> Tasks
+                                    </p>
                                     <div className="flex flex-col gap-2">
                                         {tasks.map((task) => (
                                             <TaskRow key={task.id} task={task} date={date} interactive={interactive} />
@@ -120,13 +124,19 @@ function HabitRow({ habit, date, interactive }: { habit: HabitWithLog; date: str
     const Icon = style.icon;
 
     return (
-        <div className={cx("flex items-center gap-3 rounded-xl bg-primary p-3 ring-1 ring-secondary transition duration-100", isPending && "opacity-60")}>
-            <span className={cx("flex size-9 shrink-0 items-center justify-center rounded-lg", style.tile)}>
-                <Icon className="size-4.5" />
+        <div
+            className={cx(
+                "flex items-center gap-3 border border-secondary bg-secondary_subtle p-2.5 transition duration-100 hover:border-brand_alt",
+                done && "border-brand_alt",
+                isPending && "opacity-60",
+            )}
+        >
+            <span className={cx("flex size-8 shrink-0 items-center justify-center", style.tile)}>
+                <Icon className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
-                <p className={cx("truncate text-sm font-medium text-primary", done && "text-tertiary line-through")}>{habit.title}</p>
-                <p className="truncate text-xs text-tertiary">
+                <p className={cx("truncate text-[13px] font-medium text-primary", done && "text-quaternary line-through")}>{habit.title}</p>
+                <p className="truncate text-[11px] tracking-wide text-tertiary uppercase">
                     {habit.category} · {timeText(habit)}
                 </p>
             </div>
@@ -145,13 +155,21 @@ function TaskRow({ task, date, interactive }: { task: Task; date: string; intera
     const overdue = !task.done && task.dueDate !== null && task.dueDate < date;
 
     return (
-        <div className={cx("flex items-center gap-3 rounded-xl bg-primary p-3 ring-1 ring-secondary transition duration-100", isPending && "opacity-60")}>
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-fg-quaternary">
-                <CheckSquare className="size-4.5" />
+        <div
+            className={cx(
+                "flex items-center gap-3 border border-secondary bg-secondary_subtle p-2.5 transition duration-100 hover:border-brand_alt",
+                task.done && "border-brand_alt",
+                isPending && "opacity-60",
+            )}
+        >
+            <span className="flex size-8 shrink-0 items-center justify-center bg-tertiary text-fg-quaternary">
+                <CheckSquare className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
-                <p className={cx("truncate text-sm font-medium text-primary", task.done && "text-tertiary line-through")}>{task.title}</p>
-                <p className={cx("truncate text-xs", overdue ? "text-error-primary" : "text-tertiary")}>{overdue ? "Task · overdue" : "Task"}</p>
+                <p className={cx("truncate text-[13px] font-medium text-primary", task.done && "text-quaternary line-through")}>{task.title}</p>
+                <p className={cx("truncate text-[11px] tracking-wide uppercase", overdue ? "text-error-primary" : "text-tertiary")}>
+                    {overdue ? "Task · overdue" : "Task"}
+                </p>
             </div>
             <Checkbox isSelected={task.done} isDisabled={!interactive} onChange={(next) => startTransition(() => toggleTask(task.id, next))} aria-label={task.title} />
         </div>
@@ -164,8 +182,8 @@ function ToggleBtn({ active, onClick, children }: { active: boolean; onClick: ()
             type="button"
             onClick={onClick}
             className={cx(
-                "rounded-md px-3 py-1 text-xs font-semibold transition duration-100",
-                active ? "bg-primary text-secondary shadow-xs" : "text-tertiary hover:text-secondary",
+                "px-3 py-1 text-[11px] tracking-widest uppercase transition duration-100",
+                active ? "bg-brand-solid text-primary_on-brand" : "text-tertiary hover:text-brand-secondary",
             )}
         >
             {children}

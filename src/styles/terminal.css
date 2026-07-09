@@ -1,0 +1,642 @@
+/* =====================================================================
+   TERMINAL THEME  ·  "Bloomberg-style" skin over the Untitled UI tokens
+   ---------------------------------------------------------------------
+   The whole app is driven by semantic color tokens (bg-primary,
+   text-primary, border-secondary, brand-*, fg-*, …). We remap those
+   tokens to a black-background phosphor palette, force a monospace
+   type system, and remove every rounded corner. Result: the existing
+   components re-render as a terminal without touching each view.
+
+   Six selectable phosphor colors (src/providers/theme.tsx), each applied
+   as a `.phosphor-<id>` class on <html> via next-themes:
+     .phosphor-amber  -> Bloomberg amber-on-black (default)
+     .phosphor-green  -> classic VT-terminal green
+     .phosphor-blue   -> IBM-5151-style ice blue
+     .phosphor-cyan   -> early PC cyan
+     .phosphor-red    -> red phosphor
+     .phosphor-white  -> monochrome "paperwhite"
+
+   Every variant keeps the same true-black background — only the
+   chrome (brand ramp, text/border/fg/bg accents) changes. Semantic
+   success/warning/error tokens are defined once at :root and shared
+   across all variants so status colors stay legible everywhere.
+   ===================================================================== */
+
+/* ---------- Type system: monospace everywhere ---------- */
+:root {
+    --font-body: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Cascadia Mono", "Cascadia Code", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-display: var(--font-body);
+    --font-mono: var(--font-body);
+}
+
+/* ---------- Kill every radius: terminals have hard edges ---------- */
+*,
+*::before,
+*::after {
+    border-radius: 0 !important;
+}
+
+/* ===================================================================
+   SHARED SEMANTIC TOKENS  (identical across every phosphor variant)
+   =================================================================== */
+:root {
+    --color-text-error-primary: #ff5b52;
+    --color-text-error-primary_hover: #ff7a72;
+    --color-text-warning-primary: #ffc23f;
+    --color-text-success-primary: #26ff8c;
+    --color-text-white: #ffffff;
+
+    --color-border-error: #ff5b52;
+    --color-border-error_subtle: #5a1c18;
+
+    --color-fg-success-primary: #22e07a;
+    --color-fg-success-secondary: #22e07a;
+    --color-fg-warning-primary: #ffc23f;
+    --color-fg-warning-secondary: #ffc23f;
+    --color-fg-error-primary: #ff5b52;
+    --color-fg-error-secondary: #ff5b52;
+    --color-fg-white: #ffffff;
+
+    --color-bg-success-primary: #06180f;
+    --color-bg-success-secondary: #0d2a1a;
+    --color-bg-success-solid: #16a34a;
+    --color-bg-warning-primary: #1a1405;
+    --color-bg-warning-secondary: #2a2205;
+    --color-bg-warning-solid: #d99a1a;
+    --color-bg-error-primary: #180808;
+    --color-bg-error-secondary: #2a0e0e;
+    --color-bg-error-solid: #dc2626;
+    --color-bg-error-solid_hover: #ef4444;
+    --color-bg-overlay: rgb(0 0 0 / 0.75);
+
+    --color-focus-ring-error: #ff5b52;
+}
+
+/* ===================================================================
+   AMBER  (default — applies at :root so it's the pre-hydration color)
+   =================================================================== */
+:root,
+.phosphor-amber {
+    /* Brand ramp -> amber. Low = dark tint on black, high = bright. */
+    --color-brand-50: #17110a;
+    --color-brand-100: #2a1c05;
+    --color-brand-200: #3d2907;
+    --color-brand-300: #5c3f0a;
+    --color-brand-400: #a9730f;
+    --color-brand-500: #f59e0b;
+    --color-brand-600: #ff9e2c;
+    --color-brand-700: #ffb454;
+    --color-brand-800: #ffc97f;
+    --color-brand-900: #ffe0b0;
+    --color-brand-950: #fff0d9;
+
+    --terminal-accent: #ff9e2c;
+    --terminal-accent-dim: #7a4e12;
+
+    --color-text-primary: #f5e9d6;
+    --color-text-secondary: #c9b795;
+    --color-text-secondary_hover: #e6d6b8;
+    --color-text-tertiary: #9a8c72;
+    --color-text-tertiary_hover: #bcab8c;
+    --color-text-quaternary: #6f6550;
+    --color-text-placeholder: #6f6550;
+    --color-text-primary_on-brand: #0a0700;
+    --color-text-secondary_on-brand: #1a1200;
+    --color-text-tertiary_on-brand: #2a1e05;
+    --color-text-quaternary_on-brand: #3a2c0a;
+    --color-text-brand-primary: #ffcf8f;
+    --color-text-brand-secondary: #ff9e2c;
+    --color-text-brand-secondary_hover: #ffb454;
+    --color-text-brand-tertiary: #ff9e2c;
+    --color-text-brand-tertiary_alt: #ff9e2c;
+
+    --color-border-primary: #3a3428;
+    --color-border-secondary: #221f18;
+    --color-border-secondary_alt: #221f18;
+    --color-border-tertiary: #1a1712;
+    --color-border-brand: #ff9e2c;
+    --color-border-brand_alt: #7a4e12;
+
+    --color-fg-primary: #f5e9d6;
+    --color-fg-secondary: #c9b795;
+    --color-fg-secondary_hover: #e6d6b8;
+    --color-fg-tertiary: #9a8c72;
+    --color-fg-tertiary_hover: #bcab8c;
+    --color-fg-quaternary: #6f6550;
+    --color-fg-quaternary_hover: #8a7d63;
+    --color-fg-brand-primary: #ff9e2c;
+    --color-fg-brand-primary_alt: #ff9e2c;
+    --color-fg-brand-secondary: #ff9e2c;
+    --color-fg-brand-secondary_alt: #c9b795;
+    --color-fg-brand-secondary_hover: #ffb454;
+
+    --color-bg-primary: #000000;
+    --color-bg-primary_alt: #0a0c0e;
+    --color-bg-primary_hover: #12100a;
+    --color-bg-primary-solid: #0a0c0e;
+    --color-bg-secondary: #0a0c0e;
+    --color-bg-secondary_alt: #000000;
+    --color-bg-secondary_hover: #16130c;
+    --color-bg-secondary_subtle: #050607;
+    --color-bg-secondary-solid: #16130c;
+    --color-bg-tertiary: #12100a;
+    --color-bg-quaternary: #1c1810;
+    --color-bg-active: #16130c;
+
+    --color-bg-brand-primary: #17110a;
+    --color-bg-brand-primary_alt: #0a0c0e;
+    --color-bg-brand-secondary: #2a1c05;
+    --color-bg-brand-solid: #ff9e2c;
+    --color-bg-brand-solid_hover: #ffb454;
+    --color-bg-brand-section: #0a0c0e;
+    --color-bg-brand-section_subtle: #000000;
+
+    --color-focus-ring: #ff9e2c;
+    --color-toggle-border: #3a3428;
+    --color-slider-handle-bg: #ff9e2c;
+    --color-slider-handle-border: #ff9e2c;
+}
+
+/* ===================================================================
+   GREEN  ·  classic VT-terminal phosphor
+   =================================================================== */
+.phosphor-green {
+    --color-brand-50: #071108;
+    --color-brand-100: #0a2010;
+    --color-brand-200: #0f3018;
+    --color-brand-300: #164a26;
+    --color-brand-400: #1f8f47;
+    --color-brand-500: #26ff8c;
+    --color-brand-600: #33ff99;
+    --color-brand-700: #5cffad;
+    --color-brand-800: #8affc4;
+    --color-brand-900: #b8ffdb;
+    --color-brand-950: #e0fff0;
+
+    --terminal-accent: #33ff99;
+    --terminal-accent-dim: #145c33;
+
+    --color-text-primary: #d6f7e2;
+    --color-text-secondary: #7fd6a2;
+    --color-text-secondary_hover: #a6ecc4;
+    --color-text-tertiary: #5ba37b;
+    --color-text-tertiary_hover: #7fc79e;
+    --color-text-quaternary: #3f6e54;
+    --color-text-placeholder: #3f6e54;
+    --color-text-primary_on-brand: #04120a;
+    --color-text-secondary_on-brand: #06180d;
+    --color-text-tertiary_on-brand: #0a2010;
+    --color-text-quaternary_on-brand: #0f3018;
+    --color-text-brand-primary: #8affc4;
+    --color-text-brand-secondary: #33ff99;
+    --color-text-brand-secondary_hover: #5cffad;
+    --color-text-brand-tertiary: #33ff99;
+    --color-text-brand-tertiary_alt: #33ff99;
+
+    --color-border-primary: #1f3a2a;
+    --color-border-secondary: #14261c;
+    --color-border-secondary_alt: #14261c;
+    --color-border-tertiary: #0f1c15;
+    --color-border-brand: #33ff99;
+    --color-border-brand_alt: #145c33;
+
+    --color-fg-primary: #d6f7e2;
+    --color-fg-secondary: #7fd6a2;
+    --color-fg-secondary_hover: #a6ecc4;
+    --color-fg-tertiary: #5ba37b;
+    --color-fg-tertiary_hover: #7fc79e;
+    --color-fg-quaternary: #3f6e54;
+    --color-fg-quaternary_hover: #588a6c;
+    --color-fg-brand-primary: #33ff99;
+    --color-fg-brand-primary_alt: #33ff99;
+    --color-fg-brand-secondary: #33ff99;
+    --color-fg-brand-secondary_alt: #7fd6a2;
+    --color-fg-brand-secondary_hover: #5cffad;
+
+    --color-bg-primary: #000000;
+    --color-bg-primary_alt: #060d09;
+    --color-bg-primary_hover: #0a1710;
+    --color-bg-primary-solid: #060d09;
+    --color-bg-secondary: #060d09;
+    --color-bg-secondary_alt: #000000;
+    --color-bg-secondary_hover: #0d1f14;
+    --color-bg-secondary_subtle: #040805;
+    --color-bg-secondary-solid: #0d1f14;
+    --color-bg-tertiary: #0a1710;
+    --color-bg-quaternary: #102818;
+    --color-bg-active: #0d1f14;
+
+    --color-bg-brand-primary: #0a2010;
+    --color-bg-brand-primary_alt: #060d09;
+    --color-bg-brand-secondary: #0f3018;
+    --color-bg-brand-solid: #26ff8c;
+    --color-bg-brand-solid_hover: #5cffad;
+    --color-bg-brand-section: #060d09;
+    --color-bg-brand-section_subtle: #000000;
+
+    --color-focus-ring: #33ff99;
+    --color-toggle-border: #1f3a2a;
+    --color-slider-handle-bg: #33ff99;
+    --color-slider-handle-border: #33ff99;
+}
+
+/* ===================================================================
+   BLUE  ·  IBM-5151-style ice blue
+   =================================================================== */
+.phosphor-blue {
+    --color-brand-50: #050d14;
+    --color-brand-100: #08192a;
+    --color-brand-200: #0d2a44;
+    --color-brand-300: #124066;
+    --color-brand-400: #1f76ad;
+    --color-brand-500: #29b6ff;
+    --color-brand-600: #4cc4ff;
+    --color-brand-700: #7ad4ff;
+    --color-brand-800: #a8e3ff;
+    --color-brand-900: #d4f2ff;
+    --color-brand-950: #ecfaff;
+
+    --terminal-accent: #29b6ff;
+    --terminal-accent-dim: #0d3a5c;
+
+    --color-text-primary: #dff3ff;
+    --color-text-secondary: #9ecbe8;
+    --color-text-secondary_hover: #c3e3f7;
+    --color-text-tertiary: #6a97b8;
+    --color-text-tertiary_hover: #8fb8d4;
+    --color-text-quaternary: #4a6a80;
+    --color-text-placeholder: #4a6a80;
+    --color-text-primary_on-brand: #001521;
+    --color-text-secondary_on-brand: #00202f;
+    --color-text-tertiary_on-brand: #082a3d;
+    --color-text-quaternary_on-brand: #0d3a52;
+    --color-text-brand-primary: #a8e3ff;
+    --color-text-brand-secondary: #29b6ff;
+    --color-text-brand-secondary_hover: #4cc4ff;
+    --color-text-brand-tertiary: #29b6ff;
+    --color-text-brand-tertiary_alt: #29b6ff;
+
+    --color-border-primary: #1c3a50;
+    --color-border-secondary: #122636;
+    --color-border-secondary_alt: #122636;
+    --color-border-tertiary: #0d1e2a;
+    --color-border-brand: #29b6ff;
+    --color-border-brand_alt: #0d3a5c;
+
+    --color-fg-primary: #dff3ff;
+    --color-fg-secondary: #9ecbe8;
+    --color-fg-secondary_hover: #c3e3f7;
+    --color-fg-tertiary: #6a97b8;
+    --color-fg-tertiary_hover: #8fb8d4;
+    --color-fg-quaternary: #4a6a80;
+    --color-fg-quaternary_hover: #628aa0;
+    --color-fg-brand-primary: #29b6ff;
+    --color-fg-brand-primary_alt: #29b6ff;
+    --color-fg-brand-secondary: #29b6ff;
+    --color-fg-brand-secondary_alt: #9ecbe8;
+    --color-fg-brand-secondary_hover: #4cc4ff;
+
+    --color-bg-primary: #000000;
+    --color-bg-primary_alt: #050d12;
+    --color-bg-primary_hover: #0a1620;
+    --color-bg-primary-solid: #050d12;
+    --color-bg-secondary: #050d12;
+    --color-bg-secondary_alt: #000000;
+    --color-bg-secondary_hover: #0d1c28;
+    --color-bg-secondary_subtle: #030a0e;
+    --color-bg-secondary-solid: #0d1c28;
+    --color-bg-tertiary: #0a1620;
+    --color-bg-quaternary: #122636;
+    --color-bg-active: #0d1c28;
+
+    --color-bg-brand-primary: #08192a;
+    --color-bg-brand-primary_alt: #050d12;
+    --color-bg-brand-secondary: #0d2a44;
+    --color-bg-brand-solid: #29b6ff;
+    --color-bg-brand-solid_hover: #4cc4ff;
+    --color-bg-brand-section: #050d12;
+    --color-bg-brand-section_subtle: #000000;
+
+    --color-focus-ring: #29b6ff;
+    --color-toggle-border: #1c3a50;
+    --color-slider-handle-bg: #29b6ff;
+    --color-slider-handle-border: #29b6ff;
+}
+
+/* ===================================================================
+   CYAN  ·  early PC / Tandy-style cyan
+   =================================================================== */
+.phosphor-cyan {
+    --color-brand-50: #051414;
+    --color-brand-100: #082626;
+    --color-brand-200: #0d3d3d;
+    --color-brand-300: #125c5c;
+    --color-brand-400: #1fa3a3;
+    --color-brand-500: #22e0e0;
+    --color-brand-600: #33f5f5;
+    --color-brand-700: #66f9f9;
+    --color-brand-800: #99fbfb;
+    --color-brand-900: #ccfdfd;
+    --color-brand-950: #e6ffff;
+
+    --terminal-accent: #22e0e0;
+    --terminal-accent-dim: #0d4a4a;
+
+    --color-text-primary: #daffff;
+    --color-text-secondary: #96d9d9;
+    --color-text-secondary_hover: #baf0f0;
+    --color-text-tertiary: #6bacac;
+    --color-text-tertiary_hover: #8fcaca;
+    --color-text-quaternary: #497878;
+    --color-text-placeholder: #497878;
+    --color-text-primary_on-brand: #051414;
+    --color-text-secondary_on-brand: #082626;
+    --color-text-tertiary_on-brand: #0d3d3d;
+    --color-text-quaternary_on-brand: #124d4d;
+    --color-text-brand-primary: #99fbfb;
+    --color-text-brand-secondary: #22e0e0;
+    --color-text-brand-secondary_hover: #33f5f5;
+    --color-text-brand-tertiary: #22e0e0;
+    --color-text-brand-tertiary_alt: #22e0e0;
+
+    --color-border-primary: #1c4040;
+    --color-border-secondary: #122a2a;
+    --color-border-secondary_alt: #122a2a;
+    --color-border-tertiary: #0d1e1e;
+    --color-border-brand: #22e0e0;
+    --color-border-brand_alt: #0d4a4a;
+
+    --color-fg-primary: #daffff;
+    --color-fg-secondary: #96d9d9;
+    --color-fg-secondary_hover: #baf0f0;
+    --color-fg-tertiary: #6bacac;
+    --color-fg-tertiary_hover: #8fcaca;
+    --color-fg-quaternary: #497878;
+    --color-fg-quaternary_hover: #609696;
+    --color-fg-brand-primary: #22e0e0;
+    --color-fg-brand-primary_alt: #22e0e0;
+    --color-fg-brand-secondary: #22e0e0;
+    --color-fg-brand-secondary_alt: #96d9d9;
+    --color-fg-brand-secondary_hover: #33f5f5;
+
+    --color-bg-primary: #000000;
+    --color-bg-primary_alt: #051010;
+    --color-bg-primary_hover: #0a1c1c;
+    --color-bg-primary-solid: #051010;
+    --color-bg-secondary: #051010;
+    --color-bg-secondary_alt: #000000;
+    --color-bg-secondary_hover: #0d2222;
+    --color-bg-secondary_subtle: #030a0a;
+    --color-bg-secondary-solid: #0d2222;
+    --color-bg-tertiary: #0a1c1c;
+    --color-bg-quaternary: #123030;
+    --color-bg-active: #0d2222;
+
+    --color-bg-brand-primary: #082626;
+    --color-bg-brand-primary_alt: #051010;
+    --color-bg-brand-secondary: #0d3d3d;
+    --color-bg-brand-solid: #22e0e0;
+    --color-bg-brand-solid_hover: #33f5f5;
+    --color-bg-brand-section: #051010;
+    --color-bg-brand-section_subtle: #000000;
+
+    --color-focus-ring: #22e0e0;
+    --color-toggle-border: #1c4040;
+    --color-slider-handle-bg: #22e0e0;
+    --color-slider-handle-border: #22e0e0;
+}
+
+/* ===================================================================
+   RED  ·  red phosphor
+   =================================================================== */
+.phosphor-red {
+    --color-brand-50: #140505;
+    --color-brand-100: #250808;
+    --color-brand-200: #3d0c0c;
+    --color-brand-300: #5c1212;
+    --color-brand-400: #a3201f;
+    --color-brand-500: #ff3b3b;
+    --color-brand-600: #ff5c52;
+    --color-brand-700: #ff8079;
+    --color-brand-800: #ffa8a3;
+    --color-brand-900: #ffd4d1;
+    --color-brand-950: #ffe9e7;
+
+    --terminal-accent: #ff3b3b;
+    --terminal-accent-dim: #5c1414;
+
+    --color-text-primary: #ffe3e0;
+    --color-text-secondary: #e0a09a;
+    --color-text-secondary_hover: #ffc0ba;
+    --color-text-tertiary: #b3746e;
+    --color-text-tertiary_hover: #d4938c;
+    --color-text-quaternary: #7a4d48;
+    --color-text-placeholder: #7a4d48;
+    --color-text-primary_on-brand: #1a0505;
+    --color-text-secondary_on-brand: #250808;
+    --color-text-tertiary_on-brand: #3d0c0c;
+    --color-text-quaternary_on-brand: #4d1010;
+    --color-text-brand-primary: #ffa8a3;
+    --color-text-brand-secondary: #ff3b3b;
+    --color-text-brand-secondary_hover: #ff5c52;
+    --color-text-brand-tertiary: #ff3b3b;
+    --color-text-brand-tertiary_alt: #ff3b3b;
+
+    --color-border-primary: #4a2320;
+    --color-border-secondary: #2e1512;
+    --color-border-secondary_alt: #2e1512;
+    --color-border-tertiary: #200f0d;
+    --color-border-brand: #ff3b3b;
+    --color-border-brand_alt: #5c1414;
+
+    --color-fg-primary: #ffe3e0;
+    --color-fg-secondary: #e0a09a;
+    --color-fg-secondary_hover: #ffc0ba;
+    --color-fg-tertiary: #b3746e;
+    --color-fg-tertiary_hover: #d4938c;
+    --color-fg-quaternary: #7a4d48;
+    --color-fg-quaternary_hover: #96625d;
+    --color-fg-brand-primary: #ff3b3b;
+    --color-fg-brand-primary_alt: #ff3b3b;
+    --color-fg-brand-secondary: #ff3b3b;
+    --color-fg-brand-secondary_alt: #e0a09a;
+    --color-fg-brand-secondary_hover: #ff5c52;
+
+    --color-bg-primary: #000000;
+    --color-bg-primary_alt: #0e0808;
+    --color-bg-primary_hover: #180d0c;
+    --color-bg-primary-solid: #0e0808;
+    --color-bg-secondary: #0e0808;
+    --color-bg-secondary_alt: #000000;
+    --color-bg-secondary_hover: #1e1210;
+    --color-bg-secondary_subtle: #080505;
+    --color-bg-secondary-solid: #1e1210;
+    --color-bg-tertiary: #180d0c;
+    --color-bg-quaternary: #2a1815;
+    --color-bg-active: #1e1210;
+
+    --color-bg-brand-primary: #250808;
+    --color-bg-brand-primary_alt: #0e0808;
+    --color-bg-brand-secondary: #3d0c0c;
+    --color-bg-brand-solid: #ff3b3b;
+    --color-bg-brand-solid_hover: #ff5c52;
+    --color-bg-brand-section: #0e0808;
+    --color-bg-brand-section_subtle: #000000;
+
+    --color-focus-ring: #ff3b3b;
+    --color-toggle-border: #4a2320;
+    --color-slider-handle-bg: #ff3b3b;
+    --color-slider-handle-border: #ff3b3b;
+}
+
+/* ===================================================================
+   WHITE  ·  monochrome "paperwhite" phosphor
+   =================================================================== */
+.phosphor-white {
+    --color-brand-50: #0d0d0d;
+    --color-brand-100: #1a1a1a;
+    --color-brand-200: #2b2b2b;
+    --color-brand-300: #404040;
+    --color-brand-400: #8c8c8c;
+    --color-brand-500: #e6e6e6;
+    --color-brand-600: #f2f2f2;
+    --color-brand-700: #f7f7f7;
+    --color-brand-800: #fafafa;
+    --color-brand-900: #fdfdfd;
+    --color-brand-950: #ffffff;
+
+    --terminal-accent: #f2f2f2;
+    --terminal-accent-dim: #5a5a5a;
+
+    --color-text-primary: #f5f5f5;
+    --color-text-secondary: #c7c7c7;
+    --color-text-secondary_hover: #e0e0e0;
+    --color-text-tertiary: #9a9a9a;
+    --color-text-tertiary_hover: #b8b8b8;
+    --color-text-quaternary: #6b6b6b;
+    --color-text-placeholder: #6b6b6b;
+    --color-text-primary_on-brand: #0a0a0a;
+    --color-text-secondary_on-brand: #1a1a1a;
+    --color-text-tertiary_on-brand: #2b2b2b;
+    --color-text-quaternary_on-brand: #3a3a3a;
+    --color-text-brand-primary: #fafafa;
+    --color-text-brand-secondary: #f2f2f2;
+    --color-text-brand-secondary_hover: #ffffff;
+    --color-text-brand-tertiary: #f2f2f2;
+    --color-text-brand-tertiary_alt: #f2f2f2;
+
+    --color-border-primary: #3a3a3a;
+    --color-border-secondary: #222222;
+    --color-border-secondary_alt: #222222;
+    --color-border-tertiary: #1a1a1a;
+    --color-border-brand: #f2f2f2;
+    --color-border-brand_alt: #5a5a5a;
+
+    --color-fg-primary: #f5f5f5;
+    --color-fg-secondary: #c7c7c7;
+    --color-fg-secondary_hover: #e0e0e0;
+    --color-fg-tertiary: #9a9a9a;
+    --color-fg-tertiary_hover: #b8b8b8;
+    --color-fg-quaternary: #6b6b6b;
+    --color-fg-quaternary_hover: #868686;
+    --color-fg-brand-primary: #f2f2f2;
+    --color-fg-brand-primary_alt: #f2f2f2;
+    --color-fg-brand-secondary: #f2f2f2;
+    --color-fg-brand-secondary_alt: #c7c7c7;
+    --color-fg-brand-secondary_hover: #ffffff;
+
+    --color-bg-primary: #000000;
+    --color-bg-primary_alt: #0a0a0a;
+    --color-bg-primary_hover: #131313;
+    --color-bg-primary-solid: #0a0a0a;
+    --color-bg-secondary: #0a0a0a;
+    --color-bg-secondary_alt: #000000;
+    --color-bg-secondary_hover: #181818;
+    --color-bg-secondary_subtle: #060606;
+    --color-bg-secondary-solid: #181818;
+    --color-bg-tertiary: #131313;
+    --color-bg-quaternary: #202020;
+    --color-bg-active: #181818;
+
+    --color-bg-brand-primary: #1a1a1a;
+    --color-bg-brand-primary_alt: #0a0a0a;
+    --color-bg-brand-secondary: #2b2b2b;
+    --color-bg-brand-solid: #f2f2f2;
+    --color-bg-brand-solid_hover: #ffffff;
+    --color-bg-brand-section: #0a0a0a;
+    --color-bg-brand-section_subtle: #000000;
+
+    --color-focus-ring: #f2f2f2;
+    --color-toggle-border: #3a3a3a;
+    --color-slider-handle-bg: #f2f2f2;
+    --color-slider-handle-border: #f2f2f2;
+}
+
+/* ===================================================================
+   CRT flourishes
+   =================================================================== */
+
+/* Subtle scanline + vignette overlay across the whole viewport. */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgb(255 255 255 / 0.025) 0px,
+            rgb(255 255 255 / 0.025) 1px,
+            transparent 1px,
+            transparent 3px
+        ),
+        radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.35) 100%);
+    mix-blend-mode: screen;
+}
+
+/* Phosphor glow for headings / accent text. */
+.term-glow {
+    text-shadow: 0 0 6px color-mix(in srgb, var(--terminal-accent) 55%, transparent);
+}
+
+/* Blinking block cursor. */
+@keyframes term-blink {
+    0%,
+    49% {
+        opacity: 1;
+    }
+    50%,
+    100% {
+        opacity: 0;
+    }
+}
+.term-cursor::after {
+    content: "\2588"; /* full block */
+    margin-left: 2px;
+    color: var(--terminal-accent);
+    animation: term-blink 1.1s step-end infinite;
+}
+
+/* Selection styled like a terminal highlight (inverse). */
+::selection {
+    background: var(--terminal-accent);
+    color: #000000;
+}
+
+/* Terminal scrollbars. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--terminal-accent-dim) transparent;
+}
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+    background: var(--terminal-accent-dim);
+    border: 2px solid #000000;
+}
+*::-webkit-scrollbar-track {
+    background: #000000;
+}
