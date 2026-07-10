@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 const id = () =>
     text("id")
@@ -7,11 +7,11 @@ const id = () =>
         .$defaultFn(() => crypto.randomUUID());
 
 const createdAt = () =>
-    text("created_at")
+    timestamp("created_at", { mode: "string" })
         .notNull()
-        .default(sql`(datetime('now'))`);
+        .default(sql`now()`);
 
-export const goals = sqliteTable("goals", {
+export const goals = pgTable("goals", {
     id: id(),
     title: text("title").notNull(),
     why: text("why"),
@@ -22,7 +22,7 @@ export const goals = sqliteTable("goals", {
     createdAt: createdAt(),
 });
 
-export const milestones = sqliteTable(
+export const milestones = pgTable(
     "milestones",
     {
         id: id(),
@@ -31,22 +31,22 @@ export const milestones = sqliteTable(
             .references(() => goals.id, { onDelete: "cascade" }),
         title: text("title").notNull(),
         dueDate: text("due_date"), // YYYY-MM-DD
-        done: integer("done", { mode: "boolean" }).notNull().default(false),
+        done: boolean("done").notNull().default(false),
         sortOrder: integer("sort_order").notNull().default(0),
     },
     (t) => [index("milestones_goal_idx").on(t.goalId)],
 );
 
-export const habits = sqliteTable(
+export const habits = pgTable(
     "habits",
     {
         id: id(),
         title: text("title").notNull(),
         // Days of week the habit is due, 0 = Sunday … 6 = Saturday. All 7 = daily.
-        daysOfWeek: text("days_of_week", { mode: "json" })
+        daysOfWeek: jsonb("days_of_week")
             .$type<number[]>()
             .notNull()
-            .default(sql`'[0,1,2,3,4,5,6]'`),
+            .default(sql`'[0,1,2,3,4,5,6]'::jsonb`),
         timeOfDay: text("time_of_day", { enum: ["morning", "afternoon", "evening", "anytime"] })
             .notNull()
             .default("anytime"),
@@ -56,13 +56,13 @@ export const habits = sqliteTable(
         // Free-text grouping label for the Today panel (e.g. "Trading", "Life Style").
         category: text("category").notNull().default("General"),
         goalId: text("goal_id").references(() => goals.id, { onDelete: "set null" }),
-        archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+        archived: boolean("archived").notNull().default(false),
         createdAt: createdAt(),
     },
     (t) => [index("habits_goal_idx").on(t.goalId)],
 );
 
-export const habitLogs = sqliteTable(
+export const habitLogs = pgTable(
     "habit_logs",
     {
         id: id(),
@@ -76,21 +76,21 @@ export const habitLogs = sqliteTable(
     (t) => [uniqueIndex("habit_logs_habit_date_idx").on(t.habitId, t.date), index("habit_logs_date_idx").on(t.date)],
 );
 
-export const routines = sqliteTable("routines", {
+export const routines = pgTable("routines", {
     id: id(),
     name: text("name").notNull(),
     timeWindow: text("time_window", { enum: ["morning", "afternoon", "evening"] })
         .notNull()
         .default("morning"),
-    daysOfWeek: text("days_of_week", { mode: "json" })
+    daysOfWeek: jsonb("days_of_week")
         .$type<number[]>()
         .notNull()
-        .default(sql`'[0,1,2,3,4,5,6]'`),
+        .default(sql`'[0,1,2,3,4,5,6]'::jsonb`),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: createdAt(),
 });
 
-export const routineItems = sqliteTable(
+export const routineItems = pgTable(
     "routine_items",
     {
         id: id(),
@@ -108,7 +108,7 @@ export const routineItems = sqliteTable(
     ],
 );
 
-export const tasks = sqliteTable(
+export const tasks = pgTable(
     "tasks",
     {
         id: id(),
@@ -116,7 +116,7 @@ export const tasks = sqliteTable(
         goalId: text("goal_id").references(() => goals.id, { onDelete: "set null" }),
         milestoneId: text("milestone_id").references(() => milestones.id, { onDelete: "set null" }),
         dueDate: text("due_date"), // YYYY-MM-DD
-        done: integer("done", { mode: "boolean" }).notNull().default(false),
+        done: boolean("done").notNull().default(false),
         createdAt: createdAt(),
     },
     (t) => [index("tasks_goal_idx").on(t.goalId), index("tasks_due_idx").on(t.dueDate)],
@@ -125,27 +125,27 @@ export const tasks = sqliteTable(
 // Persisted assistant conversation. One row per turn; `content` holds the
 // Anthropic content blocks (text/tool_use/tool_result) as JSON so tool activity
 // survives a reload and can be replayed to the model on the next turn.
-export const chatMessages = sqliteTable(
+export const chatMessages = pgTable(
     "chat_messages",
     {
         id: id(),
         role: text("role", { enum: ["user", "assistant"] }).notNull(),
-        content: text("content", { mode: "json" }).$type<unknown>().notNull(),
+        content: jsonb("content").$type<unknown>().notNull(),
         createdAt: createdAt(),
     },
     (t) => [index("chat_messages_created_idx").on(t.createdAt)],
 );
 
 // One rich-text journal entry per calendar day. `content` holds a TipTap JSON doc.
-export const dailyNotes = sqliteTable(
+export const dailyNotes = pgTable(
     "daily_notes",
     {
         id: id(),
         date: text("date").notNull(), // YYYY-MM-DD (local)
-        content: text("content", { mode: "json" }).$type<unknown>(),
-        updatedAt: text("updated_at")
+        content: jsonb("content").$type<unknown>(),
+        updatedAt: timestamp("updated_at", { mode: "string" })
             .notNull()
-            .default(sql`(datetime('now'))`),
+            .default(sql`now()`),
     },
     (t) => [uniqueIndex("daily_notes_date_idx").on(t.date)],
 );

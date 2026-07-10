@@ -7,14 +7,14 @@ Personal lifestyle tracker (habits, goals, routines) with an AI assistant planne
 ```bash
 npm run dev        # Next.js dev server (Turbopack), http://localhost:3000
 npm run build      # Production build
-npm run db:push    # Apply schema changes to local.db (drizzle-kit push)
+npm run db:push    # Apply schema changes to the Postgres DB (drizzle-kit push)
 npm run db:seed    # Wipe and reseed demo data (src/lib/db/seed.ts)
 npm run db:studio  # Browse the database
 ```
 
 ## App architecture
 
-- **DB**: SQLite via `@libsql/client` (`file:local.db`, override with `DATABASE_URL`). Drizzle ORM; schema in `src/lib/db/schema.ts`. Swap to Turso/Postgres at deploy time by changing the client + dialect.
+- **DB**: Postgres (Neon/Vercel Postgres) via `@neondatabase/serverless` (`drizzle-orm/neon-http`), configured with `DATABASE_URL` (gitignored `.env`; currently the `tracker_db_dev` Neon branch). Drizzle ORM; schema in `src/lib/db/schema.ts`. The neon-http driver doesn't support `db.transaction()`.
 - **Data flow**: server components call `src/lib/queries.ts`; mutations are server actions in `src/lib/actions.ts` (each calls `revalidatePath("/", "layout")`).
 - **Dates**: habit logs key off local calendar dates as `YYYY-MM-DD` strings (`src/lib/dates.ts`). Days of week are `0 = Sunday … 6 = Saturday`, stored as JSON arrays.
 - **Domain model**: Goal ← Milestone; Goal ← Habit ← HabitLog (unique per habit+date, status done/skipped, missing row = missed); Routine ← RoutineItem → Habit; Task (optionally → Goal/Milestone).

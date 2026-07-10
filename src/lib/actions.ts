@@ -167,7 +167,7 @@ export async function saveDailyNote(date: string, content: unknown) {
     if (date > todayStr()) return; // future days are read-only
     const existing = await db.select().from(dailyNotes).where(eq(dailyNotes.date, date));
     if (existing.length) {
-        await db.update(dailyNotes).set({ content, updatedAt: sql`(datetime('now'))` }).where(eq(dailyNotes.id, existing[0].id));
+        await db.update(dailyNotes).set({ content, updatedAt: sql`now()` }).where(eq(dailyNotes.id, existing[0].id));
     } else {
         await db.insert(dailyNotes).values({ date, content });
     }

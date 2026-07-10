@@ -7,11 +7,11 @@
         "build": "next build",
         "start": "next start",
         "db:push": "drizzle-kit push",
-        "db:seed": "tsx src/lib/db/seed.ts",
+        "db:seed": "tsx --env-file=.env src/lib/db/seed.ts",
         "db:studio": "drizzle-kit studio"
     },
     "dependencies": {
-        "@libsql/client": "^0.17.4",
+        "@neondatabase/serverless": "^1.1.0",
         "@tailwindcss/postcss": "^4.2.2",
         "@tailwindcss/typography": "^0.5.19",
         "@tiptap/extension-highlight": "^2.27.2",
