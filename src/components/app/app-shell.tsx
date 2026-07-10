@@ -7,6 +7,7 @@ import { AssistantDrawer } from "@/components/app/assistant-drawer";
 import { LifeHud, VitalityMeter } from "@/components/app/life-progress";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import type { UiMessage } from "@/lib/assistant/history";
+import type { AssistantSignal } from "@/lib/db/schema";
 import type { LifeProgress } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
@@ -79,11 +80,13 @@ function NavMenu({
     onNavigate,
     assistantOpen,
     onOpenAssistant,
+    unseenSignalCount,
 }: {
     pathname: string;
     onNavigate?: () => void;
     assistantOpen: boolean;
     onOpenAssistant: () => void;
+    unseenSignalCount: number;
 }) {
     return (
         <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
@@ -116,6 +119,16 @@ function NavMenu({
                                         {item.fkey}
                                     </span>
                                     <span className="flex-1 truncate">{item.label}</span>
+                                    {item.opensDrawer && unseenSignalCount > 0 && (
+                                        <span
+                                            className={cx(
+                                                "mr-1 text-[10px] tabular-nums",
+                                                current ? "text-primary_on-brand" : "text-warning-primary",
+                                            )}
+                                        >
+                                            [{unseenSignalCount}]
+                                        </span>
+                                    )}
                                     <span className={cx("text-[10px]", current ? "text-primary_on-brand/70" : "text-quaternary/60")}>
                                         {item.code}
                                     </span>
@@ -176,15 +189,18 @@ export function AppShell({
     assistantInitialMessages,
     assistantHasApiKey,
     lifeProgress,
+    signals,
 }: {
     children: ReactNode;
     assistantInitialMessages: UiMessage[];
     assistantHasApiKey: boolean;
     lifeProgress: LifeProgress;
+    signals: AssistantSignal[];
 }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [assistantOpen, setAssistantOpen] = useState(false);
+    const unseenSignalCount = signals.filter((s) => !s.dismissedAt).length;
 
     // Close the mobile nav drawer whenever the route changes.
     useEffect(() => {
@@ -230,7 +246,12 @@ export function AppShell({
             <div className="flex min-h-0 flex-1 overflow-hidden">
                 {/* ── Desktop sidebar ─────────────────────────────────────── */}
                 <aside className="flex w-64 shrink-0 flex-col border-r border-primary bg-secondary max-lg:hidden">
-                    <NavMenu pathname={pathname} assistantOpen={assistantOpen} onOpenAssistant={() => setAssistantOpen(true)} />
+                    <NavMenu
+                        pathname={pathname}
+                        assistantOpen={assistantOpen}
+                        onOpenAssistant={() => setAssistantOpen(true)}
+                        unseenSignalCount={unseenSignalCount}
+                    />
                     <SidebarStatus life={lifeProgress} />
                 </aside>
 
@@ -260,6 +281,7 @@ export function AppShell({
                                 onNavigate={() => setMobileOpen(false)}
                                 assistantOpen={assistantOpen}
                                 onOpenAssistant={() => setAssistantOpen(true)}
+                                unseenSignalCount={unseenSignalCount}
                             />
                             <SidebarStatus life={lifeProgress} />
                         </aside>
@@ -285,6 +307,7 @@ export function AppShell({
                 onClose={() => setAssistantOpen(false)}
                 initialMessages={assistantInitialMessages}
                 hasApiKey={assistantHasApiKey}
+                signals={signals}
             />
         </div>
     );

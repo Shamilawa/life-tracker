@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CheckCircle, RefreshCcw01, Send01, Stars01, XClose } from "@untitledui/icons";
+import { CheckCircle, Moon01, RefreshCcw01, Send01, Stars01, Sunrise, XClose } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/base/badges/badges";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
-import { clearChatHistory } from "@/lib/actions";
+import { clearChatHistory, dismissSignal } from "@/lib/actions";
 import type { UiMessage } from "@/lib/assistant/history";
+import type { AssistantSignal } from "@/lib/db/schema";
 import { cx } from "@/utils/cx";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string; tools: string[] };
@@ -35,10 +36,12 @@ const SUGGESTIONS = [
 export function AssistantChat({
     initialMessages,
     hasApiKey,
+    signals,
     onClose,
 }: {
     initialMessages: UiMessage[];
     hasApiKey: boolean;
+    signals: AssistantSignal[];
     /** Present when rendered inside the global slide-over (as opposed to the dedicated /assistant page) — shows a close button and tightens spacing. */
     onClose?: () => void;
 }) {
@@ -47,7 +50,16 @@ export function AssistantChat({
     const [isStreaming, setIsStreaming] = useState(false);
     const [missingKey, setMissingKey] = useState(!hasApiKey);
     const [isClearing, startClear] = useTransition();
+    const [localSignals, setLocalSignals] = useState<AssistantSignal[]>(() => signals.filter((s) => !s.dismissedAt));
+    const [, startDismiss] = useTransition();
     const router = useRouter();
+
+    function dismiss(id: string) {
+        setLocalSignals((prev) => prev.filter((s) => s.id !== id));
+        startDismiss(() => {
+            dismissSignal(id);
+        });
+    }
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -154,6 +166,14 @@ export function AssistantChat({
 
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
                 <div className={cx("mx-auto", compact ? "px-4 py-4" : "max-w-3xl px-6 py-6")}>
+                    {localSignals.length > 0 && (
+                        <div className="mb-5 flex flex-col gap-2.5">
+                            {localSignals.map((s) => (
+                                <SignalCard key={s.id} signal={s} onDismiss={() => dismiss(s.id)} />
+                            ))}
+                        </div>
+                    )}
+
                     {messages.length === 0 ? (
                         <div className="flex flex-col items-center pt-12 text-center">
                             <span className="flex size-12 items-center justify-center rounded-full bg-brand-solid text-white">
@@ -221,6 +241,22 @@ export function AssistantChat({
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function SignalCard({ signal, onDismiss }: { signal: AssistantSignal; onDismiss: () => void }) {
+    const Icon = signal.kind === "briefing_morning" ? Sunrise : Moon01;
+    return (
+        <div className="flex gap-3 rounded-xl bg-secondary_subtle p-3.5 ring-1 ring-secondary">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-secondary text-fg-brand-primary">
+                <Icon className="size-4.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-primary">{signal.title}</p>
+                <p className="mt-0.5 text-sm whitespace-pre-wrap text-secondary">{signal.body}</p>
+            </div>
+            <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Dismiss" onClick={onDismiss} />
         </div>
     );
 }

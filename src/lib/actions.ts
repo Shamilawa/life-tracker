@@ -3,7 +3,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { chatMessages, dailyNotes, goals, habitLogs, habits, milestones, routineItems, routines, tasks } from "@/lib/db/schema";
+import { assistantSignals, chatMessages, dailyNotes, goals, habitLogs, habits, milestones, routineItems, routines, tasks } from "@/lib/db/schema";
 import type { TimeOfDay, TimeWindow } from "@/lib/db/schema";
 import { todayStr } from "@/lib/dates";
 
@@ -178,4 +178,9 @@ export async function saveDailyNote(date: string, content: unknown) {
 export async function clearChatHistory() {
     await db.delete(chatMessages);
     revalidatePath("/assistant");
+}
+
+export async function dismissSignal(id: string) {
+    await db.update(assistantSignals).set({ dismissedAt: sql`now()` }).where(eq(assistantSignals.id, id));
+    refresh();
 }

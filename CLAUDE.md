@@ -33,9 +33,18 @@ Uses **OpenAI** (`openai` package, model `gpt-4o`) — not Anthropic — because
 - **History**: persisted in the `chat_messages` table (`src/lib/assistant/history.ts`). Only conversational text + tool names are stored (tools re-run against live data each turn); cleared via `clearChatHistory()` in `actions.ts`.
 - **UI**: `src/components/app/assistant-chat.tsx` (full-height chat, not the `Page` skeleton) reads the NDJSON stream and renders tool-activity chips.
 
+## Proactive signals (Phase 3, in progress)
+
+Twice-daily generated briefings so the assistant surfaces something before being asked — the first piece of turning it from a reactive chatbot into a proactive assistant (see the "From Chatbot to Personal Assistant" plan; Phase A of 5).
+
+- **Generation**: `src/lib/assistant/briefing.ts` — `recordBriefing(kind: "morning"|"evening")` gathers context by calling the existing read tools' `executeTool` from `tools.ts` (same JSON the chat already uses), makes one non-streaming `gpt-4o` call with a synthesis-tuned prompt, and inserts the result into `assistant_signals`.
+- **Trigger**: two Vercel Cron routes, `GET /api/cron/morning-briefing` and `GET /api/cron/evening-review` (`src/app/api/cron/*/route.ts`), scheduled in `vercel.json` (`30 1 * * *` / `30 14 * * *` UTC = 7am/8pm IST). Auth via `Authorization: Bearer $CRON_SECRET` (gitignored `.env`), fail-closed if unset. Cron only fires once deployed to Vercel — not yet deployed as of this writing, so trigger manually with the same header to test locally.
+- **Storage/delivery**: `assistant_signals` table (`schema.ts`) — `dismissedAt` null = unseen. `getAssistantSignals()` (`queries.ts`) reads, `dismissSignal(id)` (`actions.ts`) writes and calls the shared `refresh()` (not a narrow path — the nav badge is layout-level). Threaded from `layout.tsx`/`assistant/page.tsx` through `AppShell` (unseen-count badge on the Assistant nav item) and `AssistantDrawer` into `AssistantChat` (dismissible cards above the chat).
+- **Not yet built**: external delivery (Telegram, Phase B), persistent preferences (Phase C), triage/loop-closing (Phase D), graduated autonomy (Phase E).
+
 ## Roadmap context
 
-Phase 1 (done): CRUD + daily check-off + insights. Phase 2 (done): Claude-powered assistant with read/write tools over the data layer. Phase 3: proactive briefings/reviews via cron + notifications. Phase 4: analytics depth, calendar, PWA.
+Phase 1 (done): CRUD + daily check-off + insights. Phase 2 (done): OpenAI-powered assistant with read/write tools over the data layer. Phase 3 (in progress): proactive briefings via cron — briefing generation + in-app delivery done, external channel (Telegram) + memory + triage + autonomy still to come. Phase 4: analytics depth, calendar, PWA.
 
 ---
 

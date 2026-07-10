@@ -1,12 +1,14 @@
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+    type AssistantSignal,
     type Goal,
     type Habit,
     type HabitLog,
     type Milestone,
     type Routine,
     type Task,
+    assistantSignals,
     dailyNotes,
     goals,
     habitLogs,
@@ -644,4 +646,8 @@ export async function getActiveGoalOptions(): Promise<Array<{ id: string; title:
 
 export async function getHabitOptions(): Promise<Array<{ id: string; title: string }>> {
     return db.select({ id: habits.id, title: habits.title }).from(habits).where(eq(habits.archived, false));
+}
+
+export async function getAssistantSignals(limit = 20): Promise<AssistantSignal[]> {
+    return db.select().from(assistantSignals).orderBy(desc(assistantSignals.createdAt)).limit(limit);
 }

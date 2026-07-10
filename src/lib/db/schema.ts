@@ -150,6 +150,21 @@ export const dailyNotes = pgTable(
     (t) => [uniqueIndex("daily_notes_date_idx").on(t.date)],
 );
 
+// Proactive assistant output — twice-daily generated briefings today, more
+// signal kinds later. `dismissedAt` null = unseen; set once, never re-cleared.
+export const assistantSignals = pgTable(
+    "assistant_signals",
+    {
+        id: id(),
+        kind: text("kind", { enum: ["briefing_morning", "briefing_evening"] }).notNull(),
+        title: text("title").notNull(),
+        body: text("body").notNull(),
+        createdAt: createdAt(),
+        dismissedAt: timestamp("dismissed_at", { mode: "string" }),
+    },
+    (t) => [index("assistant_signals_created_idx").on(t.createdAt)],
+);
+
 export const goalsRelations = relations(goals, ({ many }) => ({
     milestones: many(milestones),
     habits: many(habits),
@@ -194,6 +209,8 @@ export type RoutineItem = typeof routineItems.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type DailyNote = typeof dailyNotes.$inferSelect;
+export type AssistantSignal = typeof assistantSignals.$inferSelect;
 
 export type TimeOfDay = Habit["timeOfDay"];
 export type TimeWindow = Routine["timeWindow"];
+export type SignalKind = AssistantSignal["kind"];
