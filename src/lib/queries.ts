@@ -8,6 +8,7 @@ import {
     type Milestone,
     type Routine,
     type Task,
+    assistantPreferences,
     assistantSignals,
     dailyNotes,
     goals,
@@ -196,6 +197,7 @@ export type HabitStats = {
     goalTitle: string | null;
     currentStreak: number;
     consistency30: number; // 0-100, done / due over last 30 days
+    due30: number; // how many of the last 30 days this habit was due — sample-size guard for consistency30
     heatmap: Array<{ date: string; due: boolean; status: "done" | "skipped" | null }>;
     gamification: GoalGamification; // this habit's own XP/level (all-time done logs + streak bonus)
 };
@@ -294,6 +296,7 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
             goalTitle: goal?.title ?? null,
             currentStreak: computeStreak(habit, logsByDate, dates),
             consistency30: due30.length ? Math.round((done30 / due30.length) * 100) : 0,
+            due30: due30.length,
             heatmap: heatmapDates.map((date) => ({
                 date,
                 due: habit.daysOfWeek.includes(dayOfWeek(date)),
@@ -650,4 +653,12 @@ export async function getHabitOptions(): Promise<Array<{ id: string; title: stri
 
 export async function getAssistantSignals(limit = 20): Promise<AssistantSignal[]> {
     return db.select().from(assistantSignals).orderBy(desc(assistantSignals.createdAt)).limit(limit);
+}
+
+export type AssistantPreferences = { tone: "concise" | "detailed"; focus: string | null; mutedTopics: string[] };
+
+export async function getAssistantPreferences(): Promise<AssistantPreferences> {
+    const [row] = await db.select().from(assistantPreferences).limit(1);
+    if (!row) return { tone: "concise", focus: null, mutedTopics: [] };
+    return { tone: row.tone, focus: row.focus, mutedTopics: row.mutedTopics };
 }

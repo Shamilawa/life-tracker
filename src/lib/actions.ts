@@ -3,7 +3,19 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { assistantSignals, chatMessages, dailyNotes, goals, habitLogs, habits, milestones, routineItems, routines, tasks } from "@/lib/db/schema";
+import {
+    assistantPreferences,
+    assistantSignals,
+    chatMessages,
+    dailyNotes,
+    goals,
+    habitLogs,
+    habits,
+    milestones,
+    routineItems,
+    routines,
+    tasks,
+} from "@/lib/db/schema";
 import type { TimeOfDay, TimeWindow } from "@/lib/db/schema";
 import { todayStr } from "@/lib/dates";
 
@@ -156,6 +168,11 @@ export async function toggleTask(id: string, done: boolean) {
     refresh();
 }
 
+export async function updateTaskDueDate(id: string, dueDate: string | null) {
+    await db.update(tasks).set({ dueDate }).where(eq(tasks.id, id));
+    refresh();
+}
+
 export async function deleteTask(id: string) {
     await db.delete(tasks).where(eq(tasks.id, id));
     refresh();
@@ -182,5 +199,15 @@ export async function clearChatHistory() {
 
 export async function dismissSignal(id: string) {
     await db.update(assistantSignals).set({ dismissedAt: sql`now()` }).where(eq(assistantSignals.id, id));
+    refresh();
+}
+
+export async function saveAssistantPreferences(input: { tone: "concise" | "detailed"; focus: string | null; mutedTopics: string[] }) {
+    const existing = await db.select().from(assistantPreferences).limit(1);
+    if (existing.length) {
+        await db.update(assistantPreferences).set({ ...input, updatedAt: sql`now()` }).where(eq(assistantPreferences.id, existing[0].id));
+    } else {
+        await db.insert(assistantPreferences).values(input);
+    }
     refresh();
 }

@@ -165,6 +165,35 @@ export const assistantSignals = pgTable(
     (t) => [index("assistant_signals_created_idx").on(t.createdAt)],
 );
 
+// Single global row (no per-user keying — single-user app). Shapes tone/focus
+// across web chat, Telegram, and briefings.
+export const assistantPreferences = pgTable("assistant_preferences", {
+    id: id(),
+    tone: text("tone", { enum: ["concise", "detailed"] }).notNull().default("concise"),
+    focus: text("focus"),
+    mutedTopics: jsonb("muted_topics").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull().default(sql`now()`),
+});
+
+// Deterministic "needs attention" tracking, independent of the prose briefings in
+// assistantSignals. syncFlags() (flags.ts) opens/updates/resolves these on every
+// briefing generation and every get_flags tool call — resolvedAt is set the moment
+// a flag's underlying condition stops recurring, so closure needs no explicit action.
+export const assistantFlags = pgTable(
+    "assistant_flags",
+    {
+        id: id(),
+        type: text("type", { enum: ["habit_at_risk", "task_overdue", "goal_deadline_risk"] }).notNull(),
+        refId: text("ref_id").notNull(),
+        refTitle: text("ref_title").notNull(), // snapshot at flag time; not re-joined on read
+        firstSeenAt: timestamp("first_seen_at", { mode: "string" }).notNull().default(sql`now()`),
+        lastSeenAt: timestamp("last_seen_at", { mode: "string" }).notNull().default(sql`now()`),
+        resolvedAt: timestamp("resolved_at", { mode: "string" }),
+        suggestionDismissedAt: timestamp("suggestion_dismissed_at", { mode: "string" }),
+    },
+    (t) => [index("assistant_flags_type_ref_idx").on(t.type, t.refId), index("assistant_flags_resolved_idx").on(t.resolvedAt)],
+);
+
 export const goalsRelations = relations(goals, ({ many }) => ({
     milestones: many(milestones),
     habits: many(habits),
@@ -210,7 +239,9 @@ export type Task = typeof tasks.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type DailyNote = typeof dailyNotes.$inferSelect;
 export type AssistantSignal = typeof assistantSignals.$inferSelect;
+export type AssistantFlag = typeof assistantFlags.$inferSelect;
 
 export type TimeOfDay = Habit["timeOfDay"];
 export type TimeWindow = Routine["timeWindow"];
 export type SignalKind = AssistantSignal["kind"];
+export type FlagType = AssistantFlag["type"];

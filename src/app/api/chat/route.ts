@@ -1,6 +1,6 @@
-import { format } from "date-fns";
 import OpenAI from "openai";
 import { appendAssistantMessage, appendUserMessage, loadModelMessages } from "@/lib/assistant/history";
+import { assistantSystemPrompt } from "@/lib/assistant/prompt";
 import { executeTool, tools } from "@/lib/assistant/tools";
 
 export const dynamic = "force-dynamic";
@@ -8,20 +8,6 @@ export const maxDuration = 60;
 
 const MODEL = "gpt-4o";
 const MAX_ITERATIONS = 6;
-
-function systemPrompt(): string {
-    const today = format(new Date(), "EEEE, MMMM d, yyyy");
-    return [
-        "You are the assistant inside Lifestyle OS, a personal tracker for one user's habits, goals, and routines.",
-        `Today is ${today}.`,
-        "",
-        "You have tools to read and modify the user's real data. Ground every answer in their actual data — call the read tools instead of guessing or giving generic advice. When the user reports that they did, finished, skipped, or missed something, log it with the write tools rather than just acknowledging it.",
-        "",
-        "Reversible logging (marking habits done/skipped, creating tasks, completing tasks) should be done directly without asking permission — then confirm in plain language what you changed. Match habit, goal, and task names loosely against what exists; if nothing matches, say so and offer the closest options.",
-        "",
-        "Be warm, concise, and direct. Lead with the answer. Reference the user's specific numbers (streaks, percentages, what's due) rather than platitudes. Use sentence case and no emoji.",
-    ].join("\n");
-}
 
 type StreamEvent = { type: "text"; text: string } | { type: "tool"; name: string } | { type: "done" } | { type: "error"; message: string };
 
@@ -47,7 +33,7 @@ export async function POST(req: Request): Promise<Response> {
     await appendUserMessage(message);
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: "system", content: systemPrompt() },
+        { role: "system", content: await assistantSystemPrompt() },
         ...history.map((h): OpenAI.Chat.Completions.ChatCompletionMessageParam =>
             h.role === "user" ? { role: "user", content: h.content } : { role: "assistant", content: h.content },
         ),

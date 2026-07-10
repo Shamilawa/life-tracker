@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AppShell } from "@/components/app/app-shell";
 import { loadUiMessages } from "@/lib/assistant/history";
-import { getAssistantSignals, getLifeProgress } from "@/lib/queries";
+import { getAssistantPreferences, getAssistantSignals, getLifeProgress } from "@/lib/queries";
 import { RouteProvider } from "@/providers/router-provider";
 import { Theme } from "@/providers/theme";
 import "@/styles/globals.css";
@@ -36,6 +36,7 @@ export default async function RootLayout({
     const assistantHasApiKey = Boolean(process.env.OPENAI_API_KEY);
     const lifeProgress = await getLifeProgress();
     const signals = await getAssistantSignals();
+    const preferences = await getAssistantPreferences();
 
     return (
         <html lang="en" suppressHydrationWarning>
@@ -47,6 +48,7 @@ export default async function RootLayout({
                             assistantHasApiKey={assistantHasApiKey}
                             lifeProgress={lifeProgress}
                             signals={signals}
+                            preferences={preferences}
                         >
                             {children}
                         </AppShell>

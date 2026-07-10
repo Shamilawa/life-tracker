@@ -8,7 +8,7 @@ import { LifeHud, VitalityMeter } from "@/components/app/life-progress";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import type { UiMessage } from "@/lib/assistant/history";
 import type { AssistantSignal } from "@/lib/db/schema";
-import type { LifeProgress } from "@/lib/queries";
+import type { AssistantPreferences, LifeProgress } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
 type NavEntry = { label: string; href: string; fkey: string; code: string; opensDrawer?: boolean };
@@ -190,12 +190,14 @@ export function AppShell({
     assistantHasApiKey,
     lifeProgress,
     signals,
+    preferences,
 }: {
     children: ReactNode;
     assistantInitialMessages: UiMessage[];
     assistantHasApiKey: boolean;
     lifeProgress: LifeProgress;
     signals: AssistantSignal[];
+    preferences: AssistantPreferences;
 }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -308,6 +310,7 @@ export function AppShell({
                 initialMessages={assistantInitialMessages}
                 hasApiKey={assistantHasApiKey}
                 signals={signals}
+                preferences={preferences}
             />
         </div>
     );

@@ -3,17 +3,28 @@ import { addDays, subDays } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import {
     addMilestone,
+    archiveHabit,
     createGoal,
     createHabit,
     createTask,
     setHabitLog,
     toggleTask,
+    updateGoal,
+    updateTaskDueDate,
 } from "@/lib/actions";
+import { getTopFlags, syncFlags } from "@/lib/assistant/flags";
 import { db } from "@/lib/db";
 import { goals, habits, milestones, tasks } from "@/lib/db/schema";
 import type { TimeOfDay } from "@/lib/db/schema";
-import { dateStr, daysLabel, todayStr } from "@/lib/dates";
-import { getGoalsWithProgress, getHabitsWithStats, getInsights, getRoutinesWithHabits, getTodayView } from "@/lib/queries";
+import { dateStr, daysLabel, relativeDateStr, todayStr } from "@/lib/dates";
+import {
+    getAssistantPreferences,
+    getGoalsWithProgress,
+    getHabitsWithStats,
+    getInsights,
+    getRoutinesWithHabits,
+    getTodayView,
+} from "@/lib/queries";
 
 // ---- Tool definitions ----
 // Descriptions are prescriptive about WHEN to call each tool, and the write tools
@@ -50,6 +61,12 @@ const specs: ToolSpec[] = [
         name: "get_insights",
         description:
             "Get overall stats: habit completion rate for the last 7 and 30 days, the best current streak, and the number of active goals. Call this when the user asks how they are doing overall, for a summary, or for trends.",
+        parameters: { type: "object", properties: {} },
+    },
+    {
+        name: "get_flags",
+        description:
+            "List items currently flagged as needing attention (overdue tasks, at-risk habits, goals falling behind schedule), ranked by priority, with how many days each has been flagged. Call this when the user asks what needs attention, what's slipping, or what's been on your radar.",
         parameters: { type: "object", properties: {} },
     },
     {
@@ -137,6 +154,36 @@ const specs: ToolSpec[] = [
             required: ["goal_name", "title"],
         },
     },
+    {
+        name: "reschedule_task",
+        description:
+            "Move an overdue task's due date to today. IMPORTANT: only call this after the user has explicitly agreed — propose the specific change first (e.g. \"want me to move X to today?\") and wait for a clear yes. Never call this unprompted just because a task shows as overdue.",
+        parameters: {
+            type: "object",
+            properties: { task_name: { type: "string", description: "Name of the task, matched loosely against open tasks." } },
+            required: ["task_name"],
+        },
+    },
+    {
+        name: "archive_habit",
+        description:
+            "Archive a habit that's been chronically missed, stopping it from being tracked. IMPORTANT: only call this after the user has explicitly agreed — propose the specific change first and wait for a clear yes. Never call this unprompted.",
+        parameters: {
+            type: "object",
+            properties: { habit_name: { type: "string", description: "Name of the habit, matched loosely against active habits." } },
+            required: ["habit_name"],
+        },
+    },
+    {
+        name: "extend_goal_deadline",
+        description:
+            "Push a goal's target date back by 30 days. IMPORTANT: only call this after the user has explicitly agreed — propose the specific change first and wait for a clear yes. Never call this unprompted.",
+        parameters: {
+            type: "object",
+            properties: { goal_name: { type: "string", description: "Name of the goal, matched loosely." } },
+            required: ["goal_name"],
+        },
+    },
 ];
 
 export const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = specs.map((s) => ({
@@ -195,9 +242,22 @@ export async function executeTool(name: string, input: ToolInput): Promise<strin
                 routines: t.routineGroups.map((g) => ({
                     routine: g.routine.name,
                     time: g.routine.timeWindow,
-                    habits: g.habits.map((h) => ({ name: h.title, status: h.todayLog?.status ?? "pending" })),
+                    habits: g.habits.map((h) => ({
+                        name: h.title,
+                        start_time: h.startTime,
+                        end_time: h.endTime,
+                        status: h.todayLog?.status ?? "pending",
+                    })),
                 })),
-                other_habits: t.unroutined.flatMap((u) => u.habits.map((h) => ({ name: h.title, time: u.timeOfDay, status: h.todayLog?.status ?? "pending" }))),
+                other_habits: t.unroutined.flatMap((u) =>
+                    u.habits.map((h) => ({
+                        name: h.title,
+                        time: u.timeOfDay,
+                        start_time: h.startTime,
+                        end_time: h.endTime,
+                        status: h.todayLog?.status ?? "pending",
+                    })),
+                ),
                 tasks_due_today: t.tasksDue.map((k) => k.title),
                 overdue_tasks: t.overdueTasks.map((k) => k.title),
             });
@@ -244,6 +304,13 @@ export async function executeTool(name: string, input: ToolInput): Promise<strin
                 best_current_streak: i.bestStreak,
                 active_goals: i.activeGoals,
             });
+        }
+        case "get_flags": {
+            const prefs = await getAssistantPreferences();
+            await syncFlags();
+            const flags = await getTopFlags(prefs, 10);
+            if (!flags.length) return "Nothing currently flagged.";
+            return JSON.stringify(flags.map((f) => ({ type: f.type, title: f.refTitle, days_flagged: f.daysFlagged })));
         }
         case "log_habit": {
             const habitName = str(input.habit_name);
@@ -323,6 +390,34 @@ export async function executeTool(name: string, input: ToolInput): Promise<strin
             if (!match) return `No goal matches "${goalName}". Goals: ${allGoals.map((g) => g.title).join(", ") || "none"}.`;
             await addMilestone(match.id, title, resolveDate(str(input.due_date)));
             return `Added milestone "${title}" to "${match.title}".`;
+        }
+        case "reschedule_task": {
+            const taskName = str(input.task_name);
+            if (!taskName) return "Error: task_name is required.";
+            const open = await db.select().from(tasks).where(eq(tasks.done, false));
+            const match = findByName(taskName, open, (k) => k.title);
+            if (!match) return `No open task matches "${taskName}". Open tasks: ${open.map((k) => k.title).join(", ") || "none"}.`;
+            await updateTaskDueDate(match.id, todayStr());
+            return `Rescheduled "${match.title}" to today.`;
+        }
+        case "archive_habit": {
+            const habitName = str(input.habit_name);
+            if (!habitName) return "Error: habit_name is required.";
+            const active = await db.select().from(habits).where(eq(habits.archived, false));
+            const match = findByName(habitName, active, (h) => h.title);
+            if (!match) return `No habit matches "${habitName}". Active habits: ${active.map((h) => h.title).join(", ") || "none"}.`;
+            await archiveHabit(match.id);
+            return `Archived "${match.title}".`;
+        }
+        case "extend_goal_deadline": {
+            const goalName = str(input.goal_name);
+            if (!goalName) return "Error: goal_name is required.";
+            const allGoals = await db.select().from(goals);
+            const match = findByName(goalName, allGoals, (g) => g.title);
+            if (!match) return `No goal matches "${goalName}". Goals: ${allGoals.map((g) => g.title).join(", ") || "none"}.`;
+            const newDate = relativeDateStr(30);
+            await updateGoal(match.id, { targetDate: newDate });
+            return `Pushed "${match.title}"'s deadline back to ${newDate}.`;
         }
         default:
             return `Error: unknown tool "${name}".`;

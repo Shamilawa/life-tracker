@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CheckCircle, Moon01, RefreshCcw01, Send01, Stars01, Sunrise, XClose } from "@untitledui/icons";
+import { CheckCircle, Moon01, RefreshCcw01, Send01, Settings01, Stars01, Sunrise, XClose } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
+import { PreferencesModal } from "@/components/app/preferences-modal";
 import { Badge } from "@/components/base/badges/badges";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { clearChatHistory, dismissSignal } from "@/lib/actions";
 import type { UiMessage } from "@/lib/assistant/history";
 import type { AssistantSignal } from "@/lib/db/schema";
+import type { AssistantPreferences } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string; tools: string[] };
@@ -37,11 +39,13 @@ export function AssistantChat({
     initialMessages,
     hasApiKey,
     signals,
+    preferences,
     onClose,
 }: {
     initialMessages: UiMessage[];
     hasApiKey: boolean;
     signals: AssistantSignal[];
+    preferences: AssistantPreferences;
     /** Present when rendered inside the global slide-over (as opposed to the dedicated /assistant page) — shows a close button and tightens spacing. */
     onClose?: () => void;
 }) {
@@ -52,6 +56,7 @@ export function AssistantChat({
     const [isClearing, startClear] = useTransition();
     const [localSignals, setLocalSignals] = useState<AssistantSignal[]>(() => signals.filter((s) => !s.dismissedAt));
     const [, startDismiss] = useTransition();
+    const [prefsOpen, setPrefsOpen] = useState(false);
     const router = useRouter();
 
     function dismiss(id: string) {
@@ -150,6 +155,13 @@ export function AssistantChat({
                     </Badge>
                 </div>
                 <div className="flex items-center gap-1">
+                    <ButtonUtility
+                        size="sm"
+                        color="tertiary"
+                        icon={Settings01}
+                        tooltip="Assistant preferences"
+                        onClick={() => setPrefsOpen(true)}
+                    />
                     {messages.length > 0 && (
                         <ButtonUtility
                             size="sm"
@@ -163,6 +175,8 @@ export function AssistantChat({
                     {onClose && <ButtonUtility size="sm" color="tertiary" icon={XClose} tooltip="Close" onClick={onClose} />}
                 </div>
             </div>
+
+            {prefsOpen && <PreferencesModal current={preferences} onClose={() => setPrefsOpen(false)} />}
 
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
                 <div className={cx("mx-auto", compact ? "px-4 py-4" : "max-w-3xl px-6 py-6")}>

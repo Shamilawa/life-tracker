@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AssistantChat } from "@/components/app/assistant-chat";
 import type { UiMessage } from "@/lib/assistant/history";
 import type { AssistantSignal } from "@/lib/db/schema";
+import type { AssistantPreferences } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
 /**
@@ -16,12 +17,14 @@ export function AssistantDrawer({
     initialMessages,
     hasApiKey,
     signals,
+    preferences,
 }: {
     open: boolean;
     onClose: () => void;
     initialMessages: UiMessage[];
     hasApiKey: boolean;
     signals: AssistantSignal[];
+    preferences: AssistantPreferences;
 }) {
     useEffect(() => {
         if (!open) return;
@@ -51,7 +54,13 @@ export function AssistantDrawer({
                     open ? "translate-x-0" : "translate-x-full",
                 )}
             >
-                <AssistantChat initialMessages={initialMessages} hasApiKey={hasApiKey} signals={signals} onClose={onClose} />
+                <AssistantChat
+                    initialMessages={initialMessages}
+                    hasApiKey={hasApiKey}
+                    signals={signals}
+                    preferences={preferences}
+                    onClose={onClose}
+                />
             </aside>
         </div>
     );
