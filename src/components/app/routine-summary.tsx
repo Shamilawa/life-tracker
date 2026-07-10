@@ -3,6 +3,7 @@
 import { type FC, useState, useTransition } from "react";
 import { BarChart01, CheckCircle, CheckSquare, Clock, Repeat01, Stars01, Sun, Target01, Zap } from "@untitledui/icons";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { DayTimeline } from "@/components/app/day-timeline";
 import { setHabitLog, toggleTask } from "@/lib/actions";
 import type { Habit, Task } from "@/lib/db/schema";
 import type { DayCategory, HabitWithLog } from "@/lib/queries";
@@ -22,7 +23,7 @@ const PALETTE: Array<{ icon: FC<{ className?: string }>; tile: string }> = [
 ];
 
 // Fitting icon + tint for well-known categories, hashed palette otherwise.
-function categoryStyle(category: string): { icon: FC<{ className?: string }>; tile: string } {
+export function categoryStyle(category: string): { icon: FC<{ className?: string }>; tile: string } {
     const c = category.toLowerCase();
     if (/(trad|market|invest|stock|finance)/.test(c)) return { icon: BarChart01, tile: "bg-success-secondary text-fg-success-primary" };
     if (/(life|wellness|health|self|mind|routine)/.test(c)) return { icon: Sun, tile: "bg-brand-secondary text-fg-brand-primary" };
@@ -32,7 +33,7 @@ function categoryStyle(category: string): { icon: FC<{ className?: string }>; ti
     return PALETTE[hash % PALETTE.length];
 }
 
-function timeText(habit: HabitWithLog): string {
+export function timeText(habit: HabitWithLog): string {
     if (habit.startTime && habit.endTime) return `${habit.startTime} - ${habit.endTime}`;
     if (habit.startTime) return habit.startTime;
     return TIME_LABELS[habit.timeOfDay];
@@ -49,7 +50,7 @@ export function RoutineSummary({
     date: string;
     interactive: boolean;
 }) {
-    const [view, setView] = useState<"list" | "group">("group");
+    const [view, setView] = useState<"list" | "group" | "timeline">("group");
     const isEmpty = categories.length === 0 && tasks.length === 0;
 
     const flatHabits = categories.flatMap((c) => c.habits).sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
@@ -65,6 +66,9 @@ export function RoutineSummary({
                     <ToggleBtn active={view === "group"} onClick={() => setView("group")}>
                         Group
                     </ToggleBtn>
+                    <ToggleBtn active={view === "timeline"} onClick={() => setView("timeline")}>
+                        Timeline
+                    </ToggleBtn>
                 </div>
             </div>
 
@@ -72,6 +76,8 @@ export function RoutineSummary({
                 <div className="px-5 py-10 text-center">
                     <p className="text-sm text-tertiary">&gt; nothing scheduled for this day.</p>
                 </div>
+            ) : view === "timeline" ? (
+                <DayTimeline habits={flatHabits} tasks={tasks} date={date} interactive={interactive} />
             ) : (
                 <div className="flex flex-col gap-5 px-3 py-4">
                     {view === "group" ? (

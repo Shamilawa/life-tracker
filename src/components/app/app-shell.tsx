@@ -86,7 +86,7 @@ function NavMenu({
     onOpenAssistant: () => void;
 }) {
     return (
-        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
+        <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
             {NAV_SECTIONS.map((section) => (
                 <div key={section.label}>
                     <p className="flex items-center gap-2 px-2 pb-2 text-[10px] tracking-[0.25em] text-quaternary uppercase">
@@ -194,7 +194,7 @@ export function AppShell({
     const activeCode = FLAT_NAV.find((i) => isCurrent(pathname, i.href))?.code ?? "---";
 
     return (
-        <div className="flex h-dvh flex-col bg-primary text-primary">
+        <div className="fixed inset-0 flex flex-col overflow-hidden bg-primary text-primary">
             {/* ── Top command bar ─────────────────────────────────────────── */}
             <header className="flex h-11 shrink-0 items-center justify-between border-b border-primary bg-secondary px-3 sm:px-4">
                 <div className="flex min-w-0 items-center gap-3">
@@ -227,7 +227,7 @@ export function AppShell({
                 </div>
             </header>
 
-            <div className="flex min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
                 {/* ── Desktop sidebar ─────────────────────────────────────── */}
                 <aside className="flex w-64 shrink-0 flex-col border-r border-primary bg-secondary max-lg:hidden">
                     <NavMenu pathname={pathname} assistantOpen={assistantOpen} onOpenAssistant={() => setAssistantOpen(true)} />
@@ -266,7 +266,7 @@ export function AppShell({
                     </div>
                 )}
 
-                <main className="min-w-0 flex-1 overflow-y-auto bg-primary">{children}</main>
+                <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-primary">{children}</main>
             </div>
 
             {/* ── Bottom status line ──────────────────────────────────────── */}

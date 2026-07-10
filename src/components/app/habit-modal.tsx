@@ -59,7 +59,7 @@ export function HabitModal({
 
     return (
         <ModalOverlay isOpen onOpenChange={(open) => !open && onClose()} isDismissable>
-            <Modal className="w-full max-w-140">
+            <Modal className="w-full max-w-140 border border-secondary">
                 <Dialog aria-label={habit ? "Edit habit" : "New habit"}>
                     <div className="p-6">
                         <div className="flex items-start justify-between">

@@ -152,7 +152,7 @@ export function AssistantChat({
                 </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto">
+            <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
                 <div className={cx("mx-auto", compact ? "px-4 py-4" : "max-w-3xl px-6 py-6")}>
                     {messages.length === 0 ? (
                         <div className="flex flex-col items-center pt-12 text-center">
