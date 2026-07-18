@@ -1,10 +1,12 @@
 "use client";
 
 import { type FC, useState, useTransition } from "react";
-import { BarChart01, CheckCircle, CheckSquare, Clock, Repeat01, Stars01, Sun, Target01, Zap } from "@untitledui/icons";
+import { BarChart01, CheckCircle, CheckSquare, Clock, Plus, Repeat01, Stars01, Sun, Target01, Zap } from "@untitledui/icons";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Input } from "@/components/base/input/input";
 import { DayTimeline } from "@/components/app/day-timeline";
-import { setHabitLog, toggleTask } from "@/lib/actions";
+import { TermButton } from "@/components/app/term-button";
+import { createTask, setHabitLog, toggleTask } from "@/lib/actions";
 import type { Habit, Task } from "@/lib/db/schema";
 import type { DayCategory, HabitWithLog } from "@/lib/queries";
 import { cx } from "@/utils/cx";
@@ -73,8 +75,9 @@ export function RoutineSummary({
             </div>
 
             {isEmpty ? (
-                <div className="px-5 py-10 text-center">
+                <div className="flex flex-col gap-4 px-5 py-10 text-center">
                     <p className="text-sm text-tertiary">&gt; nothing scheduled for this day.</p>
+                    <AddTaskForm date={date} />
                 </div>
             ) : view === "timeline" ? (
                 <DayTimeline habits={flatHabits} tasks={tasks} date={date} interactive={interactive} />
@@ -94,18 +97,17 @@ export function RoutineSummary({
                                     </div>
                                 </div>
                             ))}
-                            {tasks.length > 0 && (
-                                <div>
-                                    <p className="px-1 pb-2 text-[11px] tracking-widest text-quaternary uppercase">
-                                        <span className="text-brand-secondary/60">──</span> Tasks
-                                    </p>
-                                    <div className="flex flex-col gap-2">
-                                        {tasks.map((task) => (
-                                            <TaskRow key={task.id} task={task} date={date} interactive={interactive} />
-                                        ))}
-                                    </div>
+                            <div>
+                                <p className="px-1 pb-2 text-[11px] tracking-widest text-quaternary uppercase">
+                                    <span className="text-brand-secondary/60">──</span> Tasks
+                                </p>
+                                <div className="flex flex-col gap-2">
+                                    {tasks.map((task) => (
+                                        <TaskRow key={task.id} task={task} date={date} interactive={interactive} />
+                                    ))}
+                                    <AddTaskForm date={date} />
                                 </div>
-                            )}
+                            </div>
                         </>
                     ) : (
                         <div className="flex flex-col gap-2 pt-1">
@@ -115,6 +117,7 @@ export function RoutineSummary({
                             {tasks.map((task) => (
                                 <TaskRow key={task.id} task={task} date={date} interactive={interactive} />
                             ))}
+                            <AddTaskForm date={date} />
                         </div>
                     )}
                 </div>
@@ -174,10 +177,67 @@ function TaskRow({ task, date, interactive }: { task: Task; date: string; intera
             <div className="min-w-0 flex-1">
                 <p className={cx("truncate text-[13px] font-medium text-primary", task.done && "text-quaternary line-through")}>{task.title}</p>
                 <p className={cx("truncate text-[11px] tracking-wide uppercase", overdue ? "text-error-primary" : "text-tertiary")}>
-                    {overdue ? "Task · overdue" : "Task"}
+                    {overdue ? "Task · overdue" : task.dueTime ? `Task · ${task.dueTime}` : "Task"}
                 </p>
             </div>
             <Checkbox isSelected={task.done} isDisabled={!interactive} onChange={(next) => startTransition(() => toggleTask(task.id, next))} aria-label={task.title} />
+        </div>
+    );
+}
+
+/**
+ * Standalone (ad-hoc) task creation — no goal attached, due date defaults to the day being
+ * viewed. This column is a fixed ~320px rail regardless of viewport width, so date/time
+ * inputs can't rely on a viewport breakpoint to hide themselves when space is tight — they're
+ * tucked behind an explicit schedule toggle instead, and stack on their own row when open.
+ */
+function AddTaskForm({ date }: { date: string }) {
+    const [title, setTitle] = useState("");
+    const [dueDate, setDueDate] = useState(date);
+    const [dueTime, setDueTime] = useState("");
+    const [scheduleOpen, setScheduleOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+
+    const add = () => {
+        const t = title.trim();
+        if (!t) return;
+        startTransition(async () => {
+            await createTask(t, null, dueDate || date, null, dueTime || null);
+            setTitle("");
+            setDueDate(date);
+            setDueTime("");
+            setScheduleOpen(false);
+        });
+    };
+
+    return (
+        <div className={cx("flex flex-col gap-2 p-2.5", isPending && "opacity-60")}>
+            <div className="flex gap-2">
+                <div className="min-w-0 flex-1">
+                    <Input size="sm" placeholder="Add a task" value={title} onChange={setTitle} onKeyDown={(e) => e.key === "Enter" && add()} aria-label="Add a task" />
+                </div>
+                <TermButton
+                    variant="outline"
+                    iconLeading={Clock}
+                    onClick={() => setScheduleOpen((o) => !o)}
+                    aria-label={scheduleOpen ? "Hide due date/time" : "Set due date/time"}
+                    title="Due date & time (for reminders)"
+                    className={scheduleOpen ? "border-brand text-brand-secondary" : undefined}
+                />
+                <TermButton variant="solid" iconLeading={Plus} onClick={add} isDisabled={!title.trim()}>
+                    Add
+                </TermButton>
+            </div>
+            {scheduleOpen && (
+                <div className="flex gap-2">
+                    <div className="min-w-0 flex-1">
+                        <Input size="sm" type="date" value={dueDate} onChange={setDueDate} aria-label="Task due date" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <Input size="sm" type="time" value={dueTime} onChange={setDueTime} aria-label="Task due time (for reminders)" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -110,6 +110,10 @@ const specs: ToolSpec[] = [
             properties: {
                 title: { type: "string", description: "The task description." },
                 due_date: { type: "string", description: "'today', 'tomorrow', or a YYYY-MM-DD date. Optional." },
+                due_time: {
+                    type: "string",
+                    description: "Optional 'HH:MM' (24h) the task is due at. If set, a Telegram reminder fires 15 minutes before.",
+                },
                 goal_name: { type: "string", description: "Optional goal to link the task to, matched loosely." },
                 milestone_name: {
                     type: "string",
@@ -363,8 +367,10 @@ export async function executeTool(name: string, input: ToolInput): Promise<strin
                 milestoneId = findByName(milestoneName, goalMilestones, (m) => m.title)?.id ?? null;
             }
             const dueDate = resolveDate(str(input.due_date));
-            await createTask(title, goalId, dueDate, milestoneId);
-            return `Created task "${title}"${dueDate ? ` due ${dueDate}` : ""}${milestoneId ? " as a sub-task" : ""}.`;
+            const rawDueTime = str(input.due_time);
+            const dueTime = rawDueTime && /^\d{2}:\d{2}$/.test(rawDueTime) ? rawDueTime : null;
+            await createTask(title, goalId, dueDate, milestoneId, dueTime);
+            return `Created task "${title}"${dueDate ? ` due ${dueDate}` : ""}${dueTime ? ` at ${dueTime}` : ""}${milestoneId ? " as a sub-task" : ""}.`;
         }
         case "complete_task": {
             const taskName = str(input.task_name);

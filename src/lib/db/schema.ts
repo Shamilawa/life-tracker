@@ -116,7 +116,9 @@ export const tasks = pgTable(
         goalId: text("goal_id").references(() => goals.id, { onDelete: "set null" }),
         milestoneId: text("milestone_id").references(() => milestones.id, { onDelete: "set null" }),
         dueDate: text("due_date"), // YYYY-MM-DD
+        dueTime: text("due_time"), // optional "HH:MM" (24h, local) — drives the 15-min-before Telegram reminder
         done: boolean("done").notNull().default(false),
+        reminderSentAt: timestamp("reminder_sent_at", { mode: "string" }), // set once the due-soon Telegram reminder fires, so cron ticks don't resend
         createdAt: createdAt(),
     },
     (t) => [index("tasks_goal_idx").on(t.goalId), index("tasks_due_idx").on(t.dueDate)],

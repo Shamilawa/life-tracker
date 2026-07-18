@@ -18,7 +18,7 @@ import {
     routines,
     tasks,
 } from "@/lib/db/schema";
-import { dayOfWeek, lastNDates, todayStr } from "@/lib/dates";
+import { dateStr, dayOfWeek, lastNDates, todayStr } from "@/lib/dates";
 
 export type HabitWithLog = Habit & { todayLog: HabitLog | null; goalTitle: string | null };
 
@@ -202,6 +202,16 @@ export type HabitStats = {
     gamification: GoalGamification; // this habit's own XP/level (all-time done logs + streak bonus)
 };
 
+// Local calendar date the habit was created on — days before this were never actually
+// due, so streak/consistency/vitality math must not treat their absence as a miss.
+function habitCreatedDateStr(habit: Habit): string {
+    return dateStr(new Date(habit.createdAt));
+}
+
+function isHabitDue(habit: Habit, date: string): boolean {
+    return date >= habitCreatedDateStr(habit) && habit.daysOfWeek.includes(dayOfWeek(date));
+}
+
 // Longest run (ever) of consecutive due-and-done days. Skipped days are transparent
 // (mirroring computeStreak); a due day with no "done" log resets the run. Longest-ever
 // never decreases, so the XP bonus it feeds can never be revoked.
@@ -210,7 +220,7 @@ function longestStreak(habit: Habit, logsByDate: Map<string, HabitLog>, dates: s
     let best = 0;
     let run = 0;
     for (const date of dates) {
-        if (!habit.daysOfWeek.includes(dayOfWeek(date))) continue;
+        if (!isHabitDue(habit, date)) continue;
         const log = logsByDate.get(date);
         if (log?.status === "done") {
             run++;
@@ -231,7 +241,7 @@ function computeStreak(habit: Habit, logsByDate: Map<string, HabitLog>, dates: s
     let streak = 0;
     for (let i = dates.length - 1; i >= 0; i--) {
         const date = dates[i];
-        const due = habit.daysOfWeek.includes(dayOfWeek(date));
+        const due = isHabitDue(habit, date);
         if (!due) continue;
         const log = logsByDate.get(date);
         if (log?.status === "done") {
@@ -285,7 +295,7 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
         const { goal, ...habit } = h;
         const logsByDate = byHabit.get(habit.id) ?? new Map<string, HabitLog>();
 
-        const due30 = last30.filter((d) => habit.daysOfWeek.includes(dayOfWeek(d)));
+        const due30 = last30.filter((d) => isHabitDue(habit, d));
         const done30 = due30.filter((d) => logsByDate.get(d)?.status === "done").length;
 
         const streakTiers = Math.floor(longestStreak(habit, logsByDate, dates) / STREAK_TIER_DAYS);
@@ -299,7 +309,7 @@ export async function getHabitsWithStats(): Promise<HabitStats[]> {
             due30: due30.length,
             heatmap: heatmapDates.map((date) => ({
                 date,
-                due: habit.daysOfWeek.includes(dayOfWeek(date)),
+                due: isHabitDue(habit, date),
                 status: logsByDate.get(date)?.status ?? null,
             })),
             gamification: { xp: habitXp, ...computeLevel(habitXp) },
@@ -406,7 +416,7 @@ function habitConsistency30For(hs: Habit[], doneDates: Map<string, Set<string>>,
     let due = 0;
     let done = 0;
     for (const h of hs) {
-        const dueDates = last30.filter((d) => h.daysOfWeek.includes(dayOfWeek(d)));
+        const dueDates = last30.filter((d) => isHabitDue(h, d));
         due += dueDates.length;
         done += dueDates.filter((d) => doneDates.get(h.id)?.has(d)).length;
     }
@@ -558,7 +568,7 @@ export async function getLifeProgress(): Promise<LifeProgress> {
         const hLogs = byHabit.get(h.id);
         for (const d of windowDates) {
             if (d === today) continue; // today is still in progress
-            if (!h.daysOfWeek.includes(dayOfWeek(d))) continue;
+            if (!isHabitDue(h, d)) continue;
             recentDue++;
             if (!hLogs?.has(d)) recentMisses++;
         }

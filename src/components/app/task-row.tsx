@@ -17,7 +17,12 @@ export function TaskRow({ task, isOverdue = false, showDue = false }: { task: Ta
             <Checkbox isSelected={task.done} onChange={(done) => startTransition(() => toggleTask(task.id, done))} aria-label={task.title} />
             <p className={cx("min-w-0 flex-1 truncate text-sm font-medium text-primary", task.done && "text-tertiary line-through")}>{task.title}</p>
             {isOverdue && <span className="text-[10px] tracking-widest text-error-primary uppercase">[Overdue]</span>}
-            {showDue && isValidDateStr(task.dueDate) && !isOverdue && <span className="text-[11px] text-tertiary tabular-nums">{formatHuman(task.dueDate)}</span>}
+            {showDue && isValidDateStr(task.dueDate) && !isOverdue && (
+                <span className="text-[11px] text-tertiary tabular-nums">
+                    {formatHuman(task.dueDate)}
+                    {task.dueTime ? ` · ${task.dueTime}` : ""}
+                </span>
+            )}
             <span className="opacity-0 transition duration-100 group-hover:opacity-100">
                 <TermButton variant="ghost-icon" iconLeading={Trash01} aria-label="Delete task" title="Delete task" onClick={() => startTransition(() => deleteTask(task.id))} />
             </span>

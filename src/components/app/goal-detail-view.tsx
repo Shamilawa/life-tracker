@@ -157,18 +157,30 @@ function MilestoneRow({ goal, milestone }: { goal: Goal; milestone: MilestoneWit
     );
 }
 
-function InlineAddForm({ placeholder, dateLabel, onAdd }: { placeholder: string; dateLabel: string; onAdd: (title: string, due: string | null) => Promise<void> }) {
+function InlineAddForm({
+    placeholder,
+    dateLabel,
+    withTime = false,
+    onAdd,
+}: {
+    placeholder: string;
+    dateLabel: string;
+    withTime?: boolean;
+    onAdd: (title: string, due: string | null, time: string | null) => Promise<void>;
+}) {
     const [title, setTitle] = useState("");
     const [dueDate, setDueDate] = useState("");
+    const [dueTime, setDueTime] = useState("");
     const [isPending, startTransition] = useTransition();
 
     const add = () => {
         const t = title.trim();
         if (!t) return;
         startTransition(async () => {
-            await onAdd(t, dueDate || null);
+            await onAdd(t, dueDate || null, dueTime || null);
             setTitle("");
             setDueDate("");
+            setDueTime("");
         });
     };
 
@@ -178,6 +190,11 @@ function InlineAddForm({ placeholder, dateLabel, onAdd }: { placeholder: string;
             <div className="w-36 shrink-0 max-sm:hidden">
                 <Input size="sm" type="date" value={dueDate} onChange={setDueDate} aria-label={dateLabel} />
             </div>
+            {withTime && (
+                <div className="w-28 shrink-0 max-sm:hidden">
+                    <Input size="sm" type="time" value={dueTime} onChange={setDueTime} aria-label={`${dateLabel} time (for reminders)`} />
+                </div>
+            )}
             <TermButton variant="solid" iconLeading={Plus} onClick={add} isDisabled={!title.trim()}>
                 Add
             </TermButton>
@@ -264,7 +281,14 @@ export function GoalDetailView({ detail }: { detail: GoalDetail }) {
                         title="Tasks"
                         count={goalTasks.length}
                         meta={goalTasks.length > 0 && <span className="text-[11px] text-tertiary tabular-nums">{tasksDone} of {goalTasks.length} done</span>}
-                        footer={<InlineAddForm placeholder="Add a task" dateLabel="Task due date" onAdd={(t, due) => createTask(t, goal.id, due)} />}
+                        footer={
+                            <InlineAddForm
+                                placeholder="Add a task"
+                                dateLabel="Task due date"
+                                withTime
+                                onAdd={(t, due, time) => createTask(t, goal.id, due, null, time)}
+                            />
+                        }
                     >
                         {goalTasks.length === 0 ? (
                             <div className="flex flex-col items-center px-6 py-10 text-center">

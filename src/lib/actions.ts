@@ -158,8 +158,14 @@ export async function deleteRoutine(id: string) {
 
 // ---- Tasks ----
 
-export async function createTask(title: string, goalId: string | null, dueDate: string | null, milestoneId: string | null = null) {
-    await db.insert(tasks).values({ title, goalId, dueDate, milestoneId });
+export async function createTask(
+    title: string,
+    goalId: string | null,
+    dueDate: string | null,
+    milestoneId: string | null = null,
+    dueTime: string | null = null,
+) {
+    await db.insert(tasks).values({ title, goalId, dueDate, milestoneId, dueTime });
     refresh();
 }
 
@@ -170,6 +176,13 @@ export async function toggleTask(id: string, done: boolean) {
 
 export async function updateTaskDueDate(id: string, dueDate: string | null) {
     await db.update(tasks).set({ dueDate }).where(eq(tasks.id, id));
+    refresh();
+}
+
+// Setting/changing a task's due time re-arms the reminder (clears reminderSentAt) so a
+// pushed-back time gets its own 15-minutes-before ping instead of silently staying sent.
+export async function updateTaskDueTime(id: string, dueTime: string | null) {
+    await db.update(tasks).set({ dueTime, reminderSentAt: null }).where(eq(tasks.id, id));
     refresh();
 }
 

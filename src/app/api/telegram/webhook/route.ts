@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { archiveHabit, setHabitLog, updateGoal, updateTaskDueDate } from "@/lib/actions";
+import { archiveHabit, setHabitLog, toggleTask, updateGoal, updateTaskDueDate } from "@/lib/actions";
 import { dismissFlagSuggestion, syncFlags } from "@/lib/assistant/flags";
 import { runAssistantTurn } from "@/lib/assistant/run";
 import { answerCallbackQuery, clearInlineKeyboard, sendTelegramMessage } from "@/lib/assistant/telegram";
@@ -63,6 +63,10 @@ export async function POST(req: Request): Promise<Response> {
                     case "log":
                         if (payloadId) await setHabitLog(payloadId, todayStr(), "done");
                         confirmText = "Logged";
+                        break;
+                    case "complete":
+                        if (payloadId) await toggleTask(payloadId, true);
+                        confirmText = "Marked complete";
                         break;
                     case "resched":
                         if (payloadId) {

@@ -9,11 +9,10 @@ import { executeTool } from "@/lib/assistant/tools";
 import { db } from "@/lib/db";
 import { assistantSignals } from "@/lib/db/schema";
 import type { AssistantSignal, SignalKind } from "@/lib/db/schema";
-import { getAssistantPreferences, getTodayView } from "@/lib/queries";
+import { getAssistantPreferences } from "@/lib/queries";
 import type { AssistantPreferences } from "@/lib/queries";
 
 const MODEL = "gpt-4o";
-const MAX_BRIEFING_BUTTONS = 8;
 const KIND_PREFIX: Record<SuggestedAction["kind"], string> = {
     reschedule_task: "resched",
     archive_habit: "archive",
@@ -87,20 +86,9 @@ export async function recordBriefing(kind: BriefingKind): Promise<AssistantSigna
 
     try {
         const text = `${title}\n\n${body}`;
-        if (kind === "morning") {
-            const view = await getTodayView();
-            const pending = [...view.routineGroups.flatMap((g) => g.habits), ...view.unroutined.flatMap((u) => u.habits)]
-                .filter((h) => h.todayLog === null)
-                .filter(
-                    (h) =>
-                        !prefs.mutedTopics.some(
-                            (t) => h.title.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(h.title.toLowerCase()),
-                        ),
-                )
-                .slice(0, MAX_BRIEFING_BUTTONS);
-            const buttons = pending.map((h) => [{ label: h.title, data: `log:${h.id}` }]);
-            await sendTelegramMessage(text, buttons.length ? { buttons } : undefined);
+        await sendTelegramMessage(text);
 
+        if (kind === "morning") {
             let suggestion: { flag: ScoredFlag; action: SuggestedAction } | null = null;
             for (const f of topFlags) {
                 const action = suggestedAction(f);
@@ -118,8 +106,6 @@ export async function recordBriefing(kind: BriefingKind): Promise<AssistantSigna
                     ],
                 });
             }
-        } else {
-            await sendTelegramMessage(text);
         }
     } catch (err) {
         console.error("briefing: telegram delivery failed", err);

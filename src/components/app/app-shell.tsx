@@ -41,6 +41,8 @@ const NAV_SECTIONS: NavSection[] = [
 
 const FLAT_NAV = NAV_SECTIONS.flatMap((s) => s.items);
 
+const SIDEBAR_COLLAPSED_KEY = "lifestyle-os:sidebar-collapsed";
+
 function isCurrent(pathname: string, href: string) {
     return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -81,31 +83,43 @@ function NavMenu({
     assistantOpen,
     onOpenAssistant,
     unseenSignalCount,
+    collapsed = false,
 }: {
     pathname: string;
     onNavigate?: () => void;
     assistantOpen: boolean;
     onOpenAssistant: () => void;
     unseenSignalCount: number;
+    collapsed?: boolean;
 }) {
     return (
         <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 py-4">
             {NAV_SECTIONS.map((section) => (
                 <div key={section.label}>
-                    <p className="flex items-center gap-2 px-2 pb-2 text-[10px] tracking-[0.25em] text-quaternary uppercase">
-                        <span className="text-brand-secondary/60">──</span>
-                        {section.label}
-                    </p>
+                    {!collapsed && (
+                        <p className="flex items-center gap-2 px-2 pb-2 text-[10px] tracking-[0.25em] text-quaternary uppercase">
+                            <span className="text-brand-secondary/60">──</span>
+                            {section.label}
+                        </p>
+                    )}
                     <ul className="flex flex-col">
                         {section.items.map((item) => {
                             const current = item.opensDrawer ? assistantOpen : isCurrent(pathname, item.href);
                             const itemClasses = cx(
-                                "group flex items-center gap-2 px-2 py-1.5 text-[13px] tracking-wide uppercase transition duration-100",
+                                "group flex items-center gap-2 py-1.5 text-[13px] tracking-wide uppercase transition duration-100",
+                                collapsed ? "justify-center px-1" : "px-2",
                                 current
                                     ? "bg-brand-solid text-primary_on-brand"
                                     : "text-tertiary hover:bg-secondary_hover hover:text-primary",
                             );
-                            const inner = (
+                            const inner = collapsed ? (
+                                <span
+                                    className={cx("text-[10px] tabular-nums", current ? "text-primary_on-brand" : "text-quaternary")}
+                                    title={item.label}
+                                >
+                                    {item.fkey}
+                                </span>
+                            ) : (
                                 <>
                                     <span className={cx("w-3 shrink-0", current ? "text-primary_on-brand" : "text-brand-secondary")}>
                                         {current ? ">" : " "}
@@ -135,10 +149,11 @@ function NavMenu({
                                 </>
                             );
                             return (
-                                <li key={item.href}>
+                                <li key={item.href} className="relative">
                                     {item.opensDrawer ? (
                                         <button
                                             type="button"
+                                            aria-label={item.label}
                                             onClick={() => {
                                                 onOpenAssistant();
                                                 onNavigate?.();
@@ -148,9 +163,12 @@ function NavMenu({
                                             {inner}
                                         </button>
                                     ) : (
-                                        <Link href={item.href} onClick={onNavigate} className={itemClasses}>
+                                        <Link href={item.href} aria-label={item.label} onClick={onNavigate} className={itemClasses}>
                                             {inner}
                                         </Link>
+                                    )}
+                                    {collapsed && item.opensDrawer && unseenSignalCount > 0 && (
+                                        <span className="absolute top-1 right-1 size-1.5 rounded-full bg-fg-warning-primary" />
                                     )}
                                 </li>
                             );
@@ -162,7 +180,20 @@ function NavMenu({
     );
 }
 
-function SidebarStatus({ life }: { life: LifeProgress }) {
+function SidebarStatus({ life, collapsed = false }: { life: LifeProgress; collapsed?: boolean }) {
+    if (collapsed) {
+        return (
+            <div className="border-t border-secondary px-1.5 py-3">
+                <div
+                    className="flex flex-col items-center gap-1 border border-secondary bg-secondary_subtle py-2 text-[10px]"
+                    title={`LVL ${life.level} · ${life.rank} · ${life.vitality}/100 vitality`}
+                >
+                    <span className="tracking-widest text-brand-secondary">L{life.level}</span>
+                    <span className={vitalityColorFor(life.vitality)}>♥{life.vitality}</span>
+                </div>
+            </div>
+        );
+    }
     return (
         <div className="border-t border-secondary px-3 py-3">
             <div className="border border-secondary bg-secondary_subtle p-2.5 text-[11px] leading-relaxed">
@@ -184,6 +215,13 @@ function SidebarStatus({ life }: { life: LifeProgress }) {
     );
 }
 
+/** Mirrors the success/warning/error tiers in VitalityMeter for the collapsed mini readout. */
+function vitalityColorFor(v: number): string {
+    if (v >= 60) return "text-success-primary";
+    if (v >= 40) return "text-warning-primary";
+    return "text-error-primary";
+}
+
 export function AppShell({
     children,
     assistantInitialMessages,
@@ -202,12 +240,22 @@ export function AppShell({
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [assistantOpen, setAssistantOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
     const unseenSignalCount = signals.filter((s) => !s.dismissedAt).length;
 
     // Close the mobile nav drawer whenever the route changes.
     useEffect(() => {
         setMobileOpen(false);
     }, [pathname]);
+
+    // Collapsed state persists across sessions; read after mount to avoid hydration skew
+    // (same technique as Clock — server never knows localStorage's value).
+    useEffect(() => {
+        if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true") setCollapsed(true);
+    }, []);
+    useEffect(() => {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    }, [collapsed]);
 
     const activeCode = FLAT_NAV.find((i) => isCurrent(pathname, i.href))?.code ?? "---";
 
@@ -247,14 +295,29 @@ export function AppShell({
 
             <div className="flex min-h-0 flex-1 overflow-hidden">
                 {/* ── Desktop sidebar ─────────────────────────────────────── */}
-                <aside className="flex w-64 shrink-0 flex-col border-r border-primary bg-secondary max-lg:hidden">
+                <aside
+                    className={cx(
+                        "flex shrink-0 flex-col border-r border-primary bg-secondary transition-[width] duration-150 max-lg:hidden",
+                        collapsed ? "w-14" : "w-64",
+                    )}
+                >
                     <NavMenu
                         pathname={pathname}
                         assistantOpen={assistantOpen}
                         onOpenAssistant={() => setAssistantOpen(true)}
                         unseenSignalCount={unseenSignalCount}
+                        collapsed={collapsed}
                     />
-                    <SidebarStatus life={lifeProgress} />
+                    <button
+                        type="button"
+                        onClick={() => setCollapsed((c) => !c)}
+                        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        className="flex h-7 shrink-0 items-center justify-center gap-1.5 border-t border-secondary text-[10px] tracking-widest text-quaternary uppercase transition duration-100 hover:bg-secondary_hover hover:text-brand-secondary"
+                    >
+                        {collapsed ? "»" : <>« collapse</>}
+                    </button>
+                    <SidebarStatus life={lifeProgress} collapsed={collapsed} />
                 </aside>
 
                 {/* ── Mobile drawer ───────────────────────────────────────── */}
