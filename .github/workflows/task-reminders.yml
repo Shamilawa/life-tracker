@@ -1,0 +1,32 @@
+name: Task due-time reminders
+
+# Vercel's Hobby plan only allows daily cron jobs, but the 15-minutes-before-due-time
+# reminder (src/lib/assistant/reminders.ts) needs to be checked every few minutes. The
+# /api/cron/task-reminders route itself is just a normal authenticated endpoint (auth via
+# CRON_SECRET, same as the Vercel-triggered crons) — Vercel's cron-frequency limit only
+# applies to jobs declared in vercel.json, not to who calls the route. This workflow is
+# the external trigger instead.
+#
+# Setup (one-time, in the GitHub repo, not this file):
+#   Settings -> Secrets and variables -> Actions
+#     - New repository secret: CRON_SECRET       (same value as the app's CRON_SECRET env var)
+#     - New repository variable: APP_URL          (the deployed app's origin, e.g. https://your-app.vercel.app)
+#
+# Caveat: GitHub disables scheduled workflows automatically after 60 days with no
+# repository activity (commits/pushes) on the default branch. An occasional commit keeps
+# this alive; a long-dormant repo will silently stop sending reminders.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger task-reminders route
+        run: |
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL }}/api/cron/task-reminders"
