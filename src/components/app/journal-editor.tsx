@@ -146,7 +146,7 @@ export function JournalEditor({ date, initialContent, editable }: { date: string
     return (
         <div className="flex h-full flex-col">
             {editable ? (
-                <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-secondary bg-primary px-4 py-2">
+                <div className="scrollbar-hide flex shrink-0 items-center gap-1 overflow-x-auto border-b border-secondary bg-primary px-4 py-2">
                     <Btn label="Undo" icon={FlipBackward} disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} />
                     <Btn label="Redo" icon={FlipForward} disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} />
                     <Divider />
@@ -159,7 +159,7 @@ export function JournalEditor({ date, initialContent, editable }: { date: string
                             if (v === "0") editor.chain().focus().setParagraph().run();
                             else editor.chain().focus().setHeading({ level: Number(v) as 1 | 2 | 3 }).run();
                         }}
-                        className="h-8 rounded-md bg-primary px-2 text-sm font-medium text-secondary ring-1 ring-primary outline-none transition duration-100 hover:bg-primary_hover"
+                        className="h-8 shrink-0 rounded-md bg-primary px-2 text-sm font-medium text-secondary ring-1 ring-primary outline-none transition duration-100 hover:bg-primary_hover"
                     >
                         <option value="0">Normal</option>
                         <option value="1">Heading 1</option>
@@ -196,14 +196,14 @@ export function JournalEditor({ date, initialContent, editable }: { date: string
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => fileRef.current?.click()}
-                        className="flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary"
+                        className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary"
                     >
                         <ImagePlus className="size-4" />
                         Add
                     </button>
                     <input ref={fileRef} type="file" accept="image/*" onChange={onPickImage} className="hidden" />
 
-                    <div className="ml-auto flex items-center gap-3">
+                    <div className="ml-auto flex shrink-0 items-center gap-3">
                         {statusText && <span className={cx("text-xs", status === "error" ? "text-error-primary" : "text-tertiary")}>{statusText}</span>}
                         <button
                             type="button"
@@ -260,7 +260,7 @@ function Btn({
             onMouseDown={(e) => e.preventDefault()}
             onClick={onClick}
             className={cx(
-                "flex size-8 items-center justify-center rounded-md text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary disabled:cursor-not-allowed disabled:opacity-40",
+                "flex size-8 shrink-0 items-center justify-center rounded-md text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary disabled:cursor-not-allowed disabled:opacity-40",
                 active && "bg-active text-fg-secondary",
             )}
         >
@@ -270,5 +270,5 @@ function Btn({
 }
 
 function Divider() {
-    return <span className="mx-1 h-5 w-px bg-border-secondary" />;
+    return <span className="mx-1 h-5 w-px shrink-0 bg-border-secondary" />;
 }
