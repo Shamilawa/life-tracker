@@ -30,6 +30,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { saveDailyNote } from "@/lib/actions";
 import { cx } from "@/utils/cx";
 
@@ -166,41 +167,100 @@ export function JournalEditor({ date, initialContent, editable }: { date: string
                         <option value="2">Heading 2</option>
                         <option value="3">Heading 3</option>
                     </select>
-                    <Btn label="Bullet list" icon={Dotpoints01} active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
-                    <Btn label="Numbered list" icon={Dotpoints02} active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
-                    <Btn label="Code block" icon={CodeSquare01} active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()} />
                     <Divider />
 
                     <Btn label="Bold" icon={Bold01} active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} />
                     <Btn label="Italic" icon={Italic01} active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} />
-                    <Btn label="Strikethrough" icon={Strikethrough01} active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} />
-                    <Btn label="Inline code" icon={Code01} active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()} />
                     <Btn label="Underline" icon={Underline01} active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()} />
-                    <Btn label="Highlight" icon={Brush01} active={editor.isActive("highlight")} onClick={() => editor.chain().focus().toggleHighlight().run()} />
-                    <Btn label="Link" icon={Link01} active={editor.isActive("link")} onClick={setLink} />
-                    <Btn label="Superscript" active={editor.isActive("superscript")} onClick={() => editor.chain().focus().toggleSuperscript().run()}>
-                        <span className="text-sm font-semibold">x²</span>
-                    </Btn>
-                    <Btn label="Subscript" active={editor.isActive("subscript")} onClick={() => editor.chain().focus().toggleSubscript().run()}>
-                        <span className="text-sm font-semibold">x₂</span>
-                    </Btn>
                     <Divider />
 
-                    <Btn label="Align left" icon={AlignLeft} active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()} />
-                    <Btn label="Align center" icon={AlignCenter} active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()} />
-                    <Btn label="Align right" icon={AlignRight} active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()} />
-                    <Btn label="Justify" icon={AlignJustify} active={editor.isActive({ textAlign: "justify" })} onClick={() => editor.chain().focus().setTextAlign("justify").run()} />
-                    <Divider />
+                    <Btn label="Bullet list" icon={Dotpoints01} active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
+                    <Btn label="Numbered list" icon={Dotpoints02} active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
 
-                    <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => fileRef.current?.click()}
-                        className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-fg-quaternary transition duration-100 hover:bg-primary_hover hover:text-fg-secondary"
-                    >
-                        <ImagePlus className="size-4" />
-                        Add
-                    </button>
+                    {/* Less-frequent formatting lives behind this menu instead of wrapping/scrolling the row. */}
+                    <Dropdown.Root>
+                        <Dropdown.DotsButton className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-primary_hover" />
+                        <Dropdown.Popover placement="bottom left" className="w-56">
+                            <Dropdown.Menu aria-label="More formatting">
+                                <Dropdown.Item
+                                    icon={Strikethrough01}
+                                    addon={editor.isActive("strike") ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().toggleStrike().run()}
+                                >
+                                    Strikethrough
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    icon={Code01}
+                                    addon={editor.isActive("code") ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().toggleCode().run()}
+                                >
+                                    Inline code
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    icon={CodeSquare01}
+                                    addon={editor.isActive("codeBlock") ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().toggleCodeBlock().run()}
+                                >
+                                    Code block
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    icon={Brush01}
+                                    addon={editor.isActive("highlight") ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().toggleHighlight().run()}
+                                >
+                                    Highlight
+                                </Dropdown.Item>
+                                <Dropdown.Item icon={Link01} addon={editor.isActive("link") ? "✓" : undefined} onAction={setLink}>
+                                    Link
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    addon={editor.isActive("superscript") ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().toggleSuperscript().run()}
+                                >
+                                    Superscript
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    addon={editor.isActive("subscript") ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().toggleSubscript().run()}
+                                >
+                                    Subscript
+                                </Dropdown.Item>
+                                <Dropdown.Separator />
+                                <Dropdown.Item
+                                    icon={AlignLeft}
+                                    addon={editor.isActive({ textAlign: "left" }) ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().setTextAlign("left").run()}
+                                >
+                                    Align left
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    icon={AlignCenter}
+                                    addon={editor.isActive({ textAlign: "center" }) ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().setTextAlign("center").run()}
+                                >
+                                    Align center
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    icon={AlignRight}
+                                    addon={editor.isActive({ textAlign: "right" }) ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().setTextAlign("right").run()}
+                                >
+                                    Align right
+                                </Dropdown.Item>
+                                <Dropdown.Item
+                                    icon={AlignJustify}
+                                    addon={editor.isActive({ textAlign: "justify" }) ? "✓" : undefined}
+                                    onAction={() => editor.chain().focus().setTextAlign("justify").run()}
+                                >
+                                    Justify
+                                </Dropdown.Item>
+                                <Dropdown.Separator />
+                                <Dropdown.Item icon={ImagePlus} onAction={() => fileRef.current?.click()}>
+                                    Add image
+                                </Dropdown.Item>
+                            </Dropdown.Menu>
+                        </Dropdown.Popover>
+                    </Dropdown.Root>
                     <input ref={fileRef} type="file" accept="image/*" onChange={onPickImage} className="hidden" />
 
                     <div className="ml-auto flex shrink-0 items-center gap-3">
