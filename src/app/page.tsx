@@ -6,6 +6,7 @@ import { dateStr, todayStr } from "@/lib/dates";
 import { getDayView } from "@/lib/queries";
 import { cx } from "@/utils/cx";
 
+// This is force dynamic
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
